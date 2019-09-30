@@ -1,0 +1,221 @@
+---
+output: html_document
+---
+
+<style>
+
+table, td, th {
+  border: none;
+  padding-left: 1em;
+  padding-right: 1em;
+  min-width: 50%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+</style>
+
+[![](`r if(dir.exists("images")) paste0(getwd(),"/") else ""`images/icon.png){width=15%}
+![](`r if(dir.exists("images")) paste0(getwd(),"/") else ""`images/logo.png){width=50%}](https://sixtysixwards.com)
+
+```{r setup0, include=FALSE, out.width='80%'}
+use_saved_covariance <- TRUE
+use_maps <- TRUE
+use_log <- TRUE
+
+setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
+source("needle.R")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message=FALSE)
+```
+
+# Live Election Night Predictions
+Updated at `r gsub("^0","", format(lubridate::ymd_hms(Sys.time()), "%I:%M"))`, with `r scales::comma(length(a_rows))` out of `r scales::comma(length(warddiv_order))` precincts reporting.
+
+BIG DISCLOSURE: This is the first time I'm running this model, and I'm worried it gets too confident too fast. BE WARNED.
+
+### Council At Large (D)
+```{r council_at_large, fig.asp = 2.220, out.width="100%"}
+council_at_large_dem_plot <- get_needle_for_office(
+  use_office="COUNCIL AT LARGE-DEM",
+  office_name="Council At Large (D)",
+  turnout_sim = turnout_dem,
+  n_winners=5
+)
+council_at_large_dem_plot[["needle"]] %>% print()
+```
+
+### Council District 2 (D)
+```{r , fig.asp = 0.5, out.width="100%"}
+district_2_plot <- get_needle_for_office(
+  use_office="DISTRICT COUNCIL-2ND DISTRICT-DEM",
+  office_name="Council District 2 (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1,
+  consider_divs = divs_to_council$warddiv[divs_to_council$council == "2"]
+)
+district_2_plot[["needle"]] %>% print()
+```
+
+### Council District 3 (D)
+```{r district_3, fig.asp = 0.5, out.width="100%"}
+district_3_plot <- get_needle_for_office(
+  use_office="DISTRICT COUNCIL-3RD DISTRICT-DEM",
+  office_name="Council District 3 (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1,
+  consider_divs = divs_to_council$warddiv[divs_to_council$council == "3"]
+)
+district_3_plot[["needle"]] %>% print()
+```
+
+### Council District 7 (D)
+```{r district_7, fig.asp = 0.5, out.width="100%"}
+district_7_plot <- get_needle_for_office(
+  use_office="DISTRICT COUNCIL-7TH DISTRICT-DEM",
+  office_name="Council District 7 (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1,
+  consider_divs = divs_to_council$warddiv[divs_to_council$council == "7"]
+)
+district_7_plot[["needle"]] %>% print()
+```
+
+### Council District 1 (D)
+```{r district_1, fig.asp = 0.5, out.width="100%"}
+district_1_plot <- get_needle_for_office(
+  use_office="DISTRICT COUNCIL-1ST DISTRICT-DEM",
+  office_name="Council District 1 (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1,
+  consider_divs = divs_to_council$warddiv[divs_to_council$council == "1"]
+)
+district_1_plot[["needle"]] %>% print()
+```
+
+### Council District 4 (D)
+```{r district_4, fig.asp = 0.5, out.width="100%"}
+district_4_plot <- get_needle_for_office(
+  use_office="DISTRICT COUNCIL-4TH DISTRICT-DEM",
+  office_name="Council District 4 (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1,
+  consider_divs = divs_to_council$warddiv[divs_to_council$council == "4"]
+)
+district_4_plot[["needle"]] %>% print()
+```
+
+### Council At Large (R)
+Removed, somethings wrong. sorry.
+```{r council_at_large_rep, fig.asp=0.67, out.width="100%"}
+# council_at_large_rep_plot <- get_needle_for_office(
+#   use_office="COUNCIL AT LARGE-REP",
+#   office_name="Council At Large (R)",
+#   turnout_sim = turnout_rep,
+#   n_winners=5
+# )
+# council_at_large_rep_plot[["needle"]] %>% print()
+```
+
+### Mayor (D)
+```{r mayor, fig.asp = 0.33, out.width="100%"}
+mayor_plot <- get_needle_for_office(
+  use_office="MAYOR-DEM",
+  office_name="Mayor (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1
+)
+mayor_plot[["needle"]] %>% print()
+```
+
+### Common Pleas (D)
+```{r commonpleas, fig.asp=2.0, out.width="100%"}
+cp_plot <- get_needle_for_office(
+  use_office="JUDGE OF THE COURT OF COMMON PLEAS-DEM",
+  office_name="Common Pleas (D)",
+  turnout_sim = turnout_dem,
+  n_winners=6
+)
+cp_plot[["needle"]] %>% print()
+```
+
+### Commissioner (D)
+```{r commissioner, fig.asp=1.11, out.width="100%"}
+commissioner_plot <- get_needle_for_office(
+  use_office="CITY COMMISSIONERS-DEM",
+  office_name="Commissioner (D)",
+  turnout_sim = turnout_dem,
+  n_winners=2
+)
+commissioner_plot[["needle"]] %>% print()
+```
+
+### Sheriff
+```{r sheriff, fig.asp=0.45, out.width="100%"}
+sheriff_plot <- get_needle_for_office(
+  use_office="SHERIFF-DEM",
+  office_name="Sheriff (D)",
+  turnout_sim = turnout_dem,
+  n_winners=1
+)
+sheriff_plot[["needle"]] %>% print()
+```
+
+
+# Maps
+
+### Council At Large (D)
+```{r council_at_large_map, fig.asp = 3.5, out.width="100%"}
+council_at_large_dem_plot[["map"]] %>% print()
+```
+
+### Council District 2 (D)
+```{r district_2_map, fig.asp = 0.5, out.width="100%"}
+district_2_plot[["map"]] %>% print()
+```
+
+### Council District 3 (D)
+```{r district_3_map, fig.asp = 0.5, out.width="100%"}
+district_3_plot[["map"]] %>% print()
+```
+
+### Council District 7 (D)
+```{r district_7_map, fig.asp = 0.5, out.width="100%"}
+district_7_plot[["map"]] %>% print()
+```
+
+### Council District 1 (D)
+```{r district_1_map, fig.asp = 0.5, out.width="100%"}
+district_1_plot[["map"]] %>% print()
+```
+
+### Council District 4 (D)
+```{r district_4_map, fig.asp = 0.5, out.width="100%"}
+district_4_plot[["map"]] %>% print()
+```
+
+### Council At Large (R)
+```{r council_at_large_rep_map, fig.asp=1.0, out.width="100%"}
+council_at_large_rep_plot[["map"]] %>% print()
+```
+
+### Mayor (D)
+```{r mayor_map, , fig.asp = 0.5, out.width="100%"}
+mayor_plot[["map"]] %>% print()
+```
+
+### Common Pleas (D)
+```{r commonpleas_map, fig.asp=3.0, out.width="100%"}
+cp_plot[["map"]] %>% print()
+```
+
+### Commissioner (D)
+```{r commissioner_map, fig.asp=1.8, out.width="100%"}
+commissioner_plot[["map"]] %>% print()
+```
+
+### Sheriff
+```{r sheriff_map, fig.asp=0.7, out.width="100%"}
+sheriff_plot[["map"]] %>% print()
+```

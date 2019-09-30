@@ -1,0 +1,39 @@
+---
+output: html_document
+---
+
+<style>
+
+table, td, th {
+  border: none;
+  padding-left: 1em;
+  padding-right: 1em;
+  min-width: 50%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+</style>
+
+[![](`r if(dir.exists("images")) paste0(getwd(),"/") else ""`images/icon.png){width=15%}
+![](`r if(dir.exists("images")) paste0(getwd(),"/") else ""`images/logo.png){width=50%}](https://sixtysixwards.com)
+
+```{r setup, include=FALSE, out.width='80%'}
+setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message=FALSE)
+```
+
+# Live Election Night Predictions
+I'm doing a **needle**! At 8pm, tune in here. I'll process the live returns, project the divisions that haven't returned yet, and predict the outcome in real time.
+\
+\
+\
+\
+![](`r paste0(getwd(),"/")`images/fake_needle.png)
+\
+\
+\
+\
+Until then, check out the **[Live Turnout Tracker](https://jtannen.github.io/turnout_tracker_philadelphia.html)**. And read all about the election at **[Sixty-Six Wards](https://sixtysixwards.com)**.

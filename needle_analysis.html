@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Jonathan Tannen" />
+
+
+<title>The Needle knew who would win at 8:38 PM. Was it omniscient or lucky?</title>
+
+<script src="needle_analysis_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="needle_analysis_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="needle_analysis_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="needle_analysis_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="needle_analysis_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="needle_analysis_files/navigation-1.1/tabsets.js"></script>
+<link href="needle_analysis_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="needle_analysis_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlightingOnLoad(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+
+
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">The Needle knew who would win at 8:38 PM. Was it omniscient or lucky?</h1>
+<h4 class="author"><em>Jonathan Tannen</em></h4>
+<h4 class="date"><em>June 2, 2019</em></h4>
+
+</div>
+
+
+<div id="i-think-it-was-omniscient" class="section level2">
+<h2>I think it was… omniscient?</h2>
+<p>On May 21st, I unveiled my “Needle”. Simlar to the New York Times, the idea was to process the live, incomplete election results and predict who would win. In the weeks before, I fine-tuned the model, tested it on historic data, made some pretty graphics.</p>
+<p>Election night came. The polls closed at 8pm, and I started grabbing the live results from <a href="http://phillyelectionresults.com">Commissioners’ website</a>. The first batch finally came in at 8:38. The model cranked its numbers and produced its projections.</p>
+<p>And I was stunned.</p>
+<p>With 80 out of 1692 precincts reporting, the Needle was ready to call almost every race.</p>
+<div class="figure">
+<img src="tweet_not_ready_to_publish.PNG" />
+
+</div>
+<p>By the end of the night, every one of those predictions would end up being right. So what was going on? Was the needle psychic? Or lucky?</p>
+<p>It goes against every fiber of my being to put this down on paper, but honestly, this wasn’t a mistake. The Needle was omniscient.</p>
+<p>(Or rather, it really is possible to predict final outcomes with a high degree of certainty with just 5% of precincts. We’re just super easy to predict.)</p>
+<p>((To be complete: there are definitely ways to improve the model. It got Justin DiBerardinis pretty wrong, for example. But it still will probably be able to call most races within about 30 minutes.))</p>
+</div>
+<div id="the-needles-methodology" class="section level2">
+<h2>The Needle’s Methodology</h2>
+<p>The Needle makes its predictions based on historic correlations in how precincts vote. Before election night, I calculate a huge covariance matrix among all of the divisions in the city based on the past 17 primaries. (The covariance matrix is actually not fully identified, so I use the <a href="https://sixtysixwards.com/home/voting-blocs-2019/">Singular Value Decomposition dimensions from my last post</a>.)</p>
+<p>When those 80 precincts reported results, I then predicted the leftover 1612. The strategy is to calculate each unknown division as an average of the known ones, weighted by historic correlations, with appropriate uncertainty. (The math ends up being clean, just a <a href="https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Conditional_distributions">conditional multivariate normal distribution</a>.) I simulate from that distribution, and voila, have my range of predictions.</p>
+<p>What are the ways this could go wrong? There are a few: 1. If This Time is Different(TM): if our politics have fundamentally changed in a way that breaks the historic correlations. I don’t give this worry much weight. I mean, even in an election in which we demolished <a href="https://sixtysixwards.com/home/how-many-people-will-vote-in-the-primary/">my high turnout projection</a>, the correlations between which divisions turned out strong and which didn’t stayed exactly the same. 2. If the model doesn’t capture historic correlations sufficiently well, then it will pile all of the leftover uncertainty into precincts’ independent noise. Then, when I simulate, all of those independent noises will get washed out thanks to the Central Limit Theorem, and my range of predictions will be way too small (correlated errors are much more dangerous than independent ones.) This was my largest concern on Election Night. 3. A bug. It’s been <a href="https://sixtysixwards.com/home/the-state-house-model-did-really-well-but-it-was-broken/">known to happen</a>.</p>
+<p>The only real way to rule out (2) is to test the needle on more elections. Since I don’t want to wait another five months, I’ll do the second best thing: look at <em>why</em> the needle was making the predictions it did at 8:38, and see if it was right for the wrong reasons or the right ones.</p>
+<p>There’s one very important aspect of the methodology: the model doesn’t know anything about the candidates. At the beginning of the night, every candidate has the same chance of winning, and has the same chance of doing well in each neighborhood. The Needle doesn’t know that Isaiah Thomas was endorsed by the DCC, or that Justin DiBerardinis will probably do well in Center City. All it does is look at where each candidate has done well in the divisions that have reported so far, and how those divisions historically correlate with the divisions that haven’t yet reported.</p>
+</div>
+<div id="what-the-needle-saw-at-838" class="section level2">
+<h2>What the Needle saw at 8:38</h2>
+<p>Flash back to May 21st, 8:38PM. We didn’t know Gym would romp to a dominant victory. Philadelphia was in its two weeks of Spring. Bendall was still a thing.</p>
+<p>Here’s what the Needle saw.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>library(tidyverse)
+library(sf)
+
+source(&quot;../../admin_scripts/util.R&quot;)
+
+should_download &lt;- FALSE
+use_maps &lt;- FALSE
+use_saved_covariance &lt;- TRUE
+use_log &lt;- TRUE
+use_latest_file &lt;- FALSE
+
+source(&quot;needle.R&quot;)
+
+df_838 &lt;- load_data(&quot;PRECINCT_2019521_H20_M38_S25.txt&quot;)
+df_938 &lt;- load_data(&quot;PRECINCT_2019521_H21_M38_S25.txt&quot;)
+df_full &lt;- load_data(&quot;PRECINCT_2019525_H08_M09_S54.TXT&quot;)
+
+ggplot(
+  phila_whole
+) + 
+  geom_sf(fill = &quot;grey50&quot;, color=NA) +
+  geom_sf(
+    data=divs %&gt;% inner_join(df_838 %&gt;% select(warddiv) %&gt;% unique),
+    fill = &quot;black&quot;, color = NA
+  ) +
+  theme_map_sixtysix() +
+  ggtitle(&quot;Divisions Reporting as of 8:38 PM&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/data_load-1.png" width="1800" /></p>
+<p>Here are the votes for the Council At Large candidates who eventually end up in the top six (though Rivera Reyes led DiBerardinis at the time).</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>candidate_order &lt;- df_838 %&gt;% 
+  # filter(OFFICE == &quot;COUNCIL AT LARGE-DEM&quot;) %&gt;%
+  group_by(candidate, OFFICE) %&gt;%
+  summarise(votes = sum(Vote_Count)) %&gt;%
+  group_by(OFFICE) %&gt;%
+  arrange(desc(votes)) %&gt;%
+  mutate(pvote = votes/ sum(votes)) %&gt;%
+  group_by() 
+use_cands &lt;- c(&quot;Gym&quot;, &quot;Domb&quot;, &quot;Green&quot;, &quot;Thomas&quot;, &quot;Gilmore Richardson&quot;, &quot;DiBerardinis&quot;)
+
+ggplot(
+  phila_whole
+) + 
+  geom_sf(fill = &quot;grey50&quot;, color=NA) +
+  geom_sf(
+    data=divs %&gt;% 
+      inner_join(
+        df_838 %&gt;%
+          mutate(
+            candidate = factor(candidate, use_cands)
+          ) %&gt;%
+          filter(candidate %in% use_cands) 
+      ),
+    aes(fill = pvote*100), color = NA
+  ) +
+  scale_fill_viridis_c(&quot;Percent of Votes&quot;) +
+  geom_text(
+    data=candidate_order %&gt;% 
+      filter(candidate %in% use_cands) %&gt;% mutate(candidate=factor(candidate, use_cands)),
+    aes(label = sprintf(&quot;%0.1f%%&quot;, 100 * pvote)),
+    x = 2755e3, y=218e3, size = 6, fontface=&quot;bold&quot;,
+    hjust=1, vjust=1,
+    color = &quot;grey30&quot;
+  )+
+  theme_map_sixtysix() %+replace% theme(legend.position = &quot;right&quot;) +
+  facet_wrap(~candidate)+
+  ggtitle(&quot;At Large results as of 8:38 PM&quot;, &quot;With unadjusted percent of vote so far.&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/at_large_838-1.png" width="2400" /> And here’s what the Needle predicted:</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>turnout_dem &lt;- get_turnout(df_838, &quot;MAYOR-DEM&quot;, turnout_cov_dem)
+council_at_large_838 &lt;- get_needle_for_office(
+  df_838,
+  use_office=&quot;COUNCIL AT LARGE-DEM&quot;,
+  office_name=&quot;Council At Large (D)&quot;,
+  turnout_sim = turnout_dem,
+  n_winners=5
+)
+
+council_at_large_838$needle %+% 
+  (council_at_large_838$needle$data %&gt;% filter(candidate %in% use_cands)) +
+  theme(strip.text = element_text(face=&quot;bold&quot;, size = 12)) +
+  ggtitle(&quot;At Large probability of winning as of 8:38&quot;, &quot;Rivera Reyes had the other 16% chance.&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/needle_atlarge_838-1.png" width="100%" /></p>
+<p>Wait what? You may not have looked at the maps above and thought “It’s over for DiBerardinis.” But the Needle did.</p>
+<p>So why did the Needle think it was over? Let’s look at the average results from the simulations, focusing on Katherine Gilmore Richardson and Justin DiBerardinis, who finished 5 and 6.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>map_pred &lt;- function(
+  df_obs, 
+  df_sim, 
+  candidates, 
+  consider_divs=divs_to_council$warddiv,
+  color_max = 0.2,
+  color_min=0
+){
+
+  df_obs &lt;- df_obs[df_obs$candidate %in% candidates,] 
+  df_sim &lt;- df_sim[df_sim$candidate %in% candidates,] %&gt;%
+    group_by(warddiv, candidate) %&gt;%
+    summarise(pvote = mean(pvote))
+  
+  df_obs$candidate &lt;- factor(df_obs$candidate, levels = candidates)
+  df_sim$candidate &lt;- factor(df_sim$candidate, levels = candidates)
+  
+  df_sim$pvote &lt;- pmin(df_sim$pvote, color_max)
+  
+  ggplot(
+    divs %&gt;% filter(warddiv %in% consider_divs)
+  ) +
+    geom_sf(
+      data=divs %&gt;% inner_join(df_sim),
+      aes(fill=100*pvote), color = NA
+    ) +
+    geom_sf(
+      data=divs %&gt;% inner_join(df_obs),
+      aes(fill=100*pvote), color=&quot;black&quot;
+    ) +
+    scale_fill_viridis_c(&quot;Percent\n of votes&quot;) +
+    expand_limits(fill = c(color_min, 100*color_max))+ 
+    facet_wrap(~candidate) +
+    theme_map_sixtysix() %+replace%
+    theme(
+      legend.position = &quot;right&quot;,
+      strip.text = element_text(face=&quot;bold&quot;, size = 15)
+    )
+}
+
+map_pred(
+  df_838, 
+  council_at_large_838$office_sim, 
+  c(&quot;Gilmore Richardson&quot;, &quot;DiBerardinis&quot;), 
+  color_max=0.2
+) + ggtitle(&quot;Average Simulated Results at 8:38&quot;, &quot;Reporting divisions are outlined.&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/sim_map_atlarge_838-1.png" width="2400" /></p>
+<p>This is exactly what we want to see. Basically, with just 80 precincts reporting, the model had identified that Katherine was a broadly popular candidate, with a high floor and slightly stronger results in Black neighborhoods. It also figured out that Justin was going to do significantly better in wealthier neighborhoods and the Northeast than elsewhere.</p>
+<p>(The thing that we wouldn’t want to see is uniformity across the city, or random noise.)</p>
+<p>Your eye may not have noticed the divisions in Kensington, South Philly, and Mantua that went strongly Justin, but the Needle did. And it knew exactly how he would <a href="https://sixtysixwards.com/home/voting-blocs-2019/">eventually split the city</a>.</p>
+<p>That was the average simulated result, but just as important is the variance in the result. A candidate’s probability of winning depends on how many times their simulation is higher than the others’. If that candidate has highly variable swings, then they’ll win a larger percent of the time. Was it really true that among all the possible outcomes that could match the data we had so far observed, Justin won in <em>zero</em> of them?</p>
+<p>Here is the range of outcomes the Needle gave to Justin at 8:38.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>histogram_simulation &lt;- function(
+  office_sim_total, 
+  candidate, 
+  df_final, 
+  time, 
+  win_bar,
+  ndigits=0
+){
+  final_p &lt;- 100 * df_final$prop[df_final$candidate==candidate]
+  
+  binwidth = 10^-ndigits
+  ggplot(
+    office_sim_total[office_sim_total$candidate == candidate,]
+  ) + 
+    geom_histogram(
+      aes(x=pvote * 100, y=stat(density)),
+      boundary=0,
+      binwidth=binwidth,
+      fill = strong_blue
+    ) +
+    geom_vline(xintercept = win_bar, linetype=&quot;dashed&quot;) +
+    annotate(
+      &quot;text&quot;,
+      label=sprintf(&quot;Win Percent = %s%%&quot;, win_bar),
+      x=win_bar,
+      y=0,
+      hjust=0,
+      vjust=1.2,
+      angle=90
+    ) +
+    geom_vline(
+      xintercept = final_p,
+      color = &quot;grey20&quot;,
+      size=1
+    ) +
+    annotate(
+      &quot;text&quot;, 
+      label=sprintf(&quot;Actual Final Result = %s%%&quot;, round(final_p, ndigits)),
+      x=final_p,
+      y=0,
+      angle=90,
+      vjust=1.2,
+      hjust=0
+    ) +
+    xlab(&quot;Percent of Vote&quot;) +
+    ylab(&quot;Density of Simulations&quot;) +
+    theme_sixtysix() +
+    ggtitle(sprintf(&quot;%s&#39;s Simulated Results at %s&quot;, candidate, time))
+}
+
+final_at_large &lt;- df_full %&gt;% 
+  filter(OFFICE == &quot;COUNCIL AT LARGE-DEM&quot;) %&gt;%
+  group_by(candidate) %&gt;%
+  summarise(votes = sum(Vote_Count)) %&gt;%
+  group_by() %&gt;%
+  mutate(prop = votes/sum(votes))
+
+histogram_simulation(
+  council_at_large_838$office_sim_total, 
+  &quot;DiBerardinis&quot;, 
+  final_at_large, 
+  &quot;8:38&quot;, 
+  6.6, 
+  ndigits=1
+)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/justin_hist-1.png" width="2400" /></p>
+<p>This isn’t good. The Needle was confident that Justin would finish between 4-6%, and he ended up at 6.2%. That wasn’t close to the 6.6% needed to win, but it’s still an outcome the model says is basically impossible.</p>
+<p>What happened? It must be that there’s an additional source of uncertainty, a way that the division-level errors are correlated that I haven’t accounted for. I have two guesses.</p>
+<p>The first is turnout. Here’s what the Needle thought turnout would look like at 8:38.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>map_turnout &lt;- function(
+  df_obs, 
+  turnout_sim, 
+  consider_divs=divs_to_council$warddiv,
+  use_outline=TRUE
+){
+
+  turnout_obs &lt;- df_obs %&gt;%
+    filter(OFFICE == &quot;MAYOR-DEM&quot;) %&gt;%
+    group_by(warddiv) %&gt;%
+    summarise(turnout = sum(Vote_Count))
+  
+  turnout_sim &lt;- turnout_sim %&gt;%
+    group_by(warddiv) %&gt;%
+    summarise(turnout = mean(turnout))
+  
+  color_max &lt;- 10e3
+
+  ggplot(
+    divs %&gt;% filter(warddiv %in% consider_divs)
+  ) +
+    geom_sf(
+      data=divs %&gt;% inner_join(turnout_sim),
+      aes(fill=pmin(turnout / Shape__Are * 5280^2, color_max)), 
+      color = NA
+    ) +
+    geom_sf(
+      data=divs %&gt;% inner_join(turnout_obs),
+      aes(fill=pmin(turnout / Shape__Are * 5280^2, color_max)), 
+      color={if(use_outline) &quot;black&quot; else NA}
+    ) +
+    scale_fill_viridis_c(
+      &quot;Votes per\n Sq. Mile&quot;,
+      labels=function(x) ifelse(x &gt;= color_max, paste0(scales::comma(x),&quot;+&quot;), scales::comma(x))
+    ) +
+    theme_map_sixtysix()
+}
+
+map_turnout(df_838, turnout_dem) +
+  ggtitle(&quot;Projected Turnout at 8:38&quot;, &quot;Reporting divisions are outlined.&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/turnout_sim-1.png" width="1800" /></p>
+<p>Here’s what the turnout actually ended up looking like.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>map_turnout(df_full, turnout_dem[integer(0),], use_outline=FALSE) +
+  ggtitle(&quot;Final Turnout&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/turnout_final-1.png" width="1800" /></p>
+<p>The model did captured the broad pattern, but the average wasn’t enthusiastic enough about Center City/South Philly/University City turnout. Notice that’s also Justin’s base.</p>
+<p>Underestimating turnout on average isn’t itself wrong. In fact, some of the individual simulations look a lot like this map:</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>use_sim &lt;- turnout_dem %&gt;% 
+  filter(substr(warddiv, 1, 2) == &quot;27&quot;) %&gt;% 
+  group_by(sim) %&gt;% 
+  summarise(turnout_27 = sum(turnout)) %&gt;% 
+  arrange(desc(turnout_27)) %&gt;%
+  with(sim[1])
+
+map_turnout(
+  df_838,
+  turnout_dem %&gt;% filter(sim==use_sim), 
+  use_outline=FALSE
+) +
+  ggtitle(sprintf(&quot;Simulation %s&#39;s Turnout&quot;, use_sim))</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/turnout_max-1.png" width="1800" /></p>
+<p>The problem, though, is that the model didn’t allow for a candidate’s performance to be correlated with turnout (it randomly sampled turnout, then the candidate’s performance independently). Instead, it’s likely that a candidate’s performance is able to itself drive turnout; this would have increased Justin’s ceiling in the model.</p>
+<p>The second possibility is that I didn’t allow for enough ward-level correlation. I have city-wide correlations through the SVD, but it would be easy to add ward-level random effects, which account for the fact that wards as a whole may swing together, even separately from demographically similar wards in other parts of the city. This would add correlated uncertainty to the model, and make it a little less certain.</p>
+<p>Finally, it might be productive to add in a prior for candidates. Remember that the model didn’t know anything about the candidates heading in. If I had pre-programmed the notion that DiBerardinis would do better in Center City than elsewhere, or added in some Ward endorsements, it may have been more bullish on his chances, rather than simultaneously having to allow for all of the possibilities of his performance in Center City.</p>
+</div>
+<div id="calling-district-3" class="section level2">
+<h2>Calling District 3</h2>
+<p>The big upset in the city was Jamie Gauthier in West Philly’s District 3. I was ready to call that one at 9:38.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>use_cands &lt;- c(&quot;Gauthier&quot;, &quot;Blackwell&quot;)
+ggplot(
+  divs %&gt;% filter(warddiv %in% divs_to_council$warddiv[divs_to_council$council==3])
+) + 
+  geom_sf(fill = &quot;grey50&quot;, color=NA) +
+  geom_sf(
+    data=divs %&gt;% 
+      inner_join(
+        df_938 %&gt;%
+          filter(OFFICE == &quot;DISTRICT COUNCIL-3RD DISTRICT-DEM&quot;) %&gt;%
+          mutate(candidate =  factor(candidate, use_cands)) 
+      ),
+    aes(fill = pvote*100), color = NA
+  ) +
+  scale_fill_viridis_c(&quot;Percent of Votes&quot;) +
+  geom_text(
+    data=candidate_order %&gt;% filter(candidate %in% use_cands),
+    aes(label = sprintf(&quot;%0.1f%%&quot;, 100 * pvote)),
+    x = 2690e3, y=228e3, size = 10, fontface=&quot;bold&quot;,
+    hjust=1, vjust=1,
+    color = &quot;grey30&quot;
+  )+
+  theme_map_sixtysix()%+replace%
+    theme(
+      legend.position = &quot;right&quot;,
+      strip.text = element_text(face=&quot;bold&quot;, size = 15)
+    ) +
+  facet_wrap(~candidate)+
+  ggtitle(&quot;District 3 results as of 9:38 PM&quot;, &quot;With unadjusted percent of vote so far.&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/district_3-1.png" width="2400" /> Most of the reporting precincts were above Market Street, with a handful coming from the 51st in Southwest.</p>
+<p>Here’s what the Needle thought:</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>district_3_938 &lt;- get_needle_for_office(
+  df_938,
+  use_office=&quot;DISTRICT COUNCIL-3RD DISTRICT-DEM&quot;,
+  office_name=&quot;District 3&quot;,
+  turnout_sim = turnout_dem,
+  consider_divs=divs_to_council$warddiv[divs_to_council$council==3],
+  n_winners=1
+)
+
+district_3_938$needle +
+  ggtitle(&quot;Predictions for District 3 at 9:38&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/district_3_needle-1.png" width="100%" /></p>
+<p>Here’s what a family friend thought. <img src="text_10pm.jpg" /></p>
+<p>The Inquirer didn’t end up calling the race until about 10:30. So was the Needle right to be so confident? Here is the average of its 9:38 predictions.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>map_pred(
+  df_938, 
+  district_3_938$office_sim, 
+  candidates=c(&quot;Blackwell&quot;, &quot;Gauthier&quot;), 
+  consider_divs=divs_to_council$warddiv[divs_to_council$council==3],
+  color_max = 0.8,
+  color_min = 0.2
+) +
+  ggtitle(&quot;District 3 Simulated Results at 9:38&quot;, &quot;Reporting divisions outlined in black.&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/needle_map_d3-1.png" width="2400" /></p>
+<p>The Needle saw the Jamie divisions in Powelton and at the edge of gentrified University City, and knew that she would do well in the high-turnout University City divisions left to report. But more importantly, it also identified that she would run basically even with Jannie in farther West Philly (she ended up losing the area <a href="https://sixtysixwards.com/home/voting-blocs-2019/">only 53-47</a>).</p>
+<p>Here’s the range of simulated results the model made at 9:38.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>final_d3 &lt;- df_full %&gt;% 
+  filter(OFFICE == &quot;DISTRICT COUNCIL-3RD DISTRICT-DEM&quot;) %&gt;%
+  group_by(candidate) %&gt;%
+  summarise(votes = sum(Vote_Count)) %&gt;%
+  group_by() %&gt;%
+  mutate(prop = votes/sum(votes))
+
+histogram_simulation(
+  district_3_938$office_sim_total, 
+  &quot;Gauthier&quot;, 
+  final_d3, 
+  &quot;9:38&quot;, 
+  50, 
+  ndigits=0
+)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/jamie_histogram-1.png" width="2400" /></p>
+<p>It was dead on. The model said Jamie would have a modal win of 56% of the vote, she did. It said she had only a 0.5% chance of losing. She didn’t.</p>
+</div>
+<div id="model-performance" class="section level2">
+<h2>Model performance</h2>
+<p>Notice that Justin’s final performance was at the top of the simulations, while Jamie’s was right in the heart of the distribution. This gives a useful way to evaluate the model. We can calculate the percentile of the final results versus the simulated distribution. Justin’s final result was the 99.75th percentile of the simulations, Jamie’s was the 51st percentile of hers. If the model is well-calibrated, then these percentiles should be uniformly distributed between 0 and 1.</p>
+<p>Alternatively, if we sort and then plot them, they should fall on the line y=x, maybe with some noise. Here’s that plot for At Large at 9:38.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary><pre class="r"><code>council_at_large_838$office_sim_total %&gt;%
+  left_join(final_at_large) %&gt;% 
+  group_by(candidate) %&gt;%
+  summarise(percentile = mean(pvote &lt; prop)) %&gt;%
+  ggplot() +
+  geom_abline(intercept = 0, slope = 1)+
+  geom_point(aes(x=(rank(percentile)-0.5)/30, y=percentile)) +
+  coord_fixed() +
+  ylab(&quot;Final results as percentile&quot;)+
+  xlab(&quot;Candidate&#39;s percentile rank&quot;) +
+  theme_sixtysix() +
+  ggtitle(&quot;Final results vs simulations&quot;, &quot;Percentile of Simulations at 8:38, Council at Large&quot;)</code></pre></details>
+<p><img src="needle_analysis_files/figure-html/residual-1.png" width="1800" /></p>
+<p>This plot shows that we have too many values on the extremes: the high predictions are too high, the low ones are too low. This is a hallmark of the fact that the prediction intervals are too narrow, and didn’t allow enough uncertainty. It’s not terrible, but can be improved.</p>
+</div>
+<div id="so-are-the-race-callers-wrong" class="section level2">
+<h2>So are the race-callers wrong?</h2>
+<p>I’m claiming the Needle was basically right, if a little over-confident in a way I can fix. My hunch is that even after I tweak it, the model would still have been able to call all the races by 10pm, a lot faster than the race-callers in the media. Are the race-callers wrong to be so slow?</p>
+<p>I think there are two things going on.</p>
+<p>First, the incentives for the papers are to be super risk-averse. Getting a call wrong is a lot worse than waiting 30 minutes. And they have a lot more readership than I do.</p>
+<p>When the needle is 99% sure, that 1% may still be just too large to warrant a newspaper making a call. If you have 5 races in each of 2 elections every year, you would expect to get a call wrong once a decade. That’s probably bad. Couple in the likelihood of maybe your model isn’t perfectly calibrated, and you may want to be especially cautious.</p>
+<p>But second, people often don’t realize just how much information is contained in the historic data. They see a map like District 3’s 9:38 map above, and only notice the vast West Philly non-reports, and imagine a full range of possibilities. In their head, they imagine that those could swing +/- 10 points, leading to very different final outcomes. The truth is, though, that with 17 years worth of data (I have back to 2002), that uncertainty is really only +/- 4 points. You need a full model to tell you if the probability of a comeback is 10%, 1% or 0.1%.</p>
+<p>One third thing that’s going on (I know I said two…) is that our elections aren’t really that close. Gauthier won by 12 points. In presidential elections, that would be the largest gap since Reagan beat Mondale in ’84. At 9:38, I was able to predict Gauthier within +/- 4 points. In a closer race I wouldn’t have been sure of the final outcome; in this one I was. Four point uncertainty on 56% of the vote means we know who will win. It’s similar with At Large, though with even smaller numbers. It took 6.6% of the vote to win (voters could vote for up to 5). At 8:38, I thought Justin would win about 4.8% of the vote. Getting up to 6.6 requires him receiving *38%* more votes than he currently was. That’s a huge ask, even if two percentage points looks small on paper.</p>
+</div>
+<div id="the-needle-will-be-back-in-november" class="section level2">
+<h2>The Needle will be back in November!</h2>
+<p>I’ll retool the needle using the insights above, and then we’ll be back in November! Municipal Election Novembers can be sleepy, but we’ve got some potentially interesting races, including District 10 Republican incumbent Brian O’Neill being challenged by Democrat Judy Moore, and whether maybe, possibly, a third party At Large candidate could beat one of the Republicans. More on each of those soon.</p>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
