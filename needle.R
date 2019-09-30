@@ -6,16 +6,47 @@ select <- dplyr::select
 setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
 source("../../admin_scripts/util.R")
 
-if(!exists("use_saved_covariance")) use_saved_covariance <- TRUE
-if(!exists("use_maps")) use_maps <- TRUE
+if(!exists("USE_SAVED_COVARIANCE")) USE_SAVED_COVARIANCE <- TRUE
+if(!exists("USE_MAPS")) USE_MAPS <- TRUE
 if(!exists("should_download")) should_download <- TRUE
-if(!exists("use_log")) use_log <- TRUE
+if(!exists("USE_LOG")) USE_LOG <- TRUE
+if(!exists("IS_PRIMARY")) IS_PRIMARY <- FALSE
 
 set.seed(215)
 
+
+
+## UPDATE ON ELECTION DAY
+if(IS_PRIMARY){
+  USE_OFFICES <- c(
+    "CITY COMMISSIONERS-DEM",
+    "COUNCIL AT LARGE-DEM",
+    "DISTRICT COUNCIL-1ST DISTRICT-DEM",
+    "DISTRICT COUNCIL-2ND DISTRICT-DEM",
+    "DISTRICT COUNCIL-7TH DISTRICT-DEM",
+    "MAYOR-DEM"
+  )
+} else {
+  USE_OFFICES <- c(
+    "CITY COMMISSIONERS",
+    "COUNCIL AT LARGE",
+    "DISTRICT COUNCIL-10TH DISTRICT",
+    "MAYOR"
+  )
+}
 ##################
 ## Load download
 ##################
+
+asnum <- function(x) as.numeric(as.character(x))
+
+format_name <- function(x){
+  x <- gsub("^[0-9]+\\-", "", x)
+  x <- gsub("(.*)\\,.*", "\\1", x)
+  x <-  gsub("(\\B)([A-Z]+\\b)", "\\U\\1\\L\\2", x, perl = TRUE)
+  x <- ifelse(x == "Almiron", "Almiron", x)
+  x <- ifelse(x == "Diberardinis", "DiBerardinis", x)
+}
 
 if(should_download){
   results_site <- readLines("http://phillyelectionresults.com/ExportFiles.html")
@@ -35,7 +66,7 @@ load_data <- function(file){
     delim = "@"
   ) %>%
     rename(
-      OFFICE = `Office_Prop Name`,
+      office = `Office_Prop Name`,
       candidate = Tape_Text,
       warddiv = Precinct_Name
     )
@@ -48,32 +79,17 @@ load_data <- function(file){
     group_by() %>%
     filter(sum_votes > 0)
   
-  df <- inner_join(df, returns %>% select(warddiv))
+  df <- inner_join(df, returns %>% dplyr::select(warddiv))
   
   if(nrow(df) == 0) stop("No data yet!")
   
-  ## UPDATE ON ELECTION DAY
-  use_offices <- c(
-    "CITY COMMISSIONERS-DEM",
-    "COUNCIL AT LARGE-DEM",
-    "COUNCIL AT LARGE-REP",
-    "DISTRICT COUNCIL-1ST DISTRICT-DEM",
-    "DISTRICT COUNCIL-2ND DISTRICT-DEM",
-    "DISTRICT COUNCIL-3RD DISTRICT-DEM",
-    "DISTRICT COUNCIL-4TH DISTRICT-DEM",
-    "DISTRICT COUNCIL-7TH DISTRICT-DEM",
-    "JUDGE OF THE COURT OF COMMON PLEAS-DEM",
-    "MAYOR-DEM",
-    "SHERIFF-DEM"
-  )
-  
   df <- df %>% 
-    filter(OFFICE %in% use_offices) %>%
+    filter(office %in% USE_OFFICES) %>%
     filter(candidate != "Write In")
   
   df <- df %>% 
     mutate(candidate = format_name(candidate)) %>%
-    group_by(warddiv, OFFICE) %>% 
+    group_by(warddiv, office) %>% 
     mutate(pvote = Vote_Count / sum(Vote_Count)) %>%
     group_by()
   
@@ -86,21 +102,17 @@ if(FALSE){
   df <- load_data(file)
 }
 
-asnum <- function(x) as.numeric(as.character(x))
-
-format_name <- function(x){
-  x <- gsub("^[0-9]+\\-", "", x)
-  x <- gsub("(.*)\\,.*", "\\1", x)
-  x <-  gsub("(\\B)([A-Z]+\\b)", "\\U\\1\\L\\2", x, perl = TRUE)
-  x <- ifelse(x == "Almiron", "Almiron", x)
-  x <- ifelse(x == "Diberardinis", "DiBerardinis", x)
+if(FALSE){
+  df <- load_data("PRECINCT_2019521_H20_M38_S25.txt")
 }
 
-divs <- st_read("../../data/gis/2019/Political_Divisions.shp")
+
+divs <- st_read("../../data/gis/201911/Political_Divisions.shp")
 divs <- st_transform(divs, 2272) %>%
   rename(
     warddiv = DIVISION_N
-  )
+  ) %>%
+  arrange(warddiv)
 
 wards <- st_read("../../data/gis/2019/Political_Wards.shp") %>%
   mutate(ward=sprintf("%02d", asnum(WARD_NUM))) %>%
@@ -108,20 +120,42 @@ wards <- st_read("../../data/gis/2019/Political_Wards.shp") %>%
 
 phila_whole <- st_union(wards)
 
+plot_dim <- function(u){
+  ggplot(
+    divs %>% mutate(u = !!u)
+  ) + geom_sf(aes(fill=u), color = NA) +
+    scale_fill_viridis_c()
+}
+
 ## test on past data
 if(FALSE){
-  df <- safe_load("../../data/processed_data/df_all_2019_05_14.Rda") %>%
+  use_past_offices <- c(
+    "CITY COMMISSIONERS",
+    "COUNCIL AT LARGE",
+    "JUDGE OF THE COURT OF COMMON PLEAS",
+    "MAYOR",
+    "SHERIFF"
+  )
+  
+  df <- readRDS("../../data/processed_data/df_all_2019_09_19.Rds") %>%
     group_by() %>%
-    unite("election", year, election) %>%
-    unite("warddiv", WARD19, DIV19, sep="-") %>%
     filter(
-      election == "2015_primary"
+      election == "general",
+      year == '2015',
+      !grepl("WRITE IN", candidate, ignore.case = TRUE)
     ) %>%
-    filter(!grepl("WRITE IN", CANDIDATE, ignore.case = TRUE)) %>%
-    mutate(OFFICE = paste0(OFFICE, "-", substr(PARTY,1,3))) %>%
-    filter(OFFICE %in% use_offices) %>%
-    rename(Vote_Count = VOTES, candidate=CANDIDATE) %>%
-    select(warddiv, OFFICE, candidate, Vote_Count)
+    unite("election", year, election) %>%
+    mutate(
+      office = paste0(
+        office, 
+        ifelse(!is.na(district), paste0("-",district),"")
+      )
+    ) %>%
+    filter(office %in% use_past_offices) %>%
+    group_by(warddiv, office, candidate) %>%
+    summarise(Vote_Count=sum(votes)) %>%
+    ungroup()
+    
   
   sample_divs <- sample(unique(df$warddiv), 10)
   df <- df %>% filter(warddiv %in% sample_divs)
@@ -129,24 +163,43 @@ if(FALSE){
   # df <- df %>% filter(substr(warddiv, 1, 2) == "01")
 }
 
-if(!use_saved_covariance){
-  df_past <- safe_load("../../data/processed_data/df_major_2019_05_14.Rda") %>%
+if(!USE_SAVED_COVARIANCE){
+  df_past <- readRDS("../../data/processed_data/df_major_2019_09_19.Rds") %>%
     unite("election", year, election) %>%
-    unite("warddiv", WARD19, DIV19, sep="-") 
+    filter(
+      !office %in% c(
+        "REPRESENTATIVE IN THE GENERAL ASSEMBLY",
+        "SENATOR IN THE GENERAL ASSEMBLY",
+        "REPRESENTATIVE IN CONGRESS",
+        "DISTRICT COUNCIL"
+      ),
+      !grepl("^(JUDGE|JUSTICE)", office)
+    )
 
-  # df_past <- df_past %>% filter(election >= "2012")
+  ##################
+  ## Turnout
+  ##################
   
-  get_turnout_past <- function(party_grep){
-    df_party <- df_past %>% filter(grepl(party_grep, PARTY))
-    turnout_party <- df_party %>% 
+  get_turnout_past <- function(party_grep=NA){
+    if(IS_PRIMARY){
+      df_filtered <- df_past %>% 
+        filter(
+          grepl(party_grep, party),
+          grepl("^[0-9]{4}_primary", election)
+        )
+    } else {
+      df_filtered <- df_past
+    }
+    
+    turnout <- df_filtered %>% 
       filter(is_primary_office) %>%
       group_by(warddiv, election) %>%
-      summarise(VOTES = sum(VOTES)) %>%
+      summarise(votes = sum(votes)) %>%
       group_by() %>%
-      mutate(log_turnout = log(VOTES + 1)) %>%
-      mutate(target = {if(use_log) log_turnout else VOTES})
+      mutate(log_turnout = log(votes + 1)) %>%
+      mutate(target = {if(USE_LOG) log_turnout else votes})
     
-    turnout_wide <- turnout_party %>%
+    turnout_wide <- turnout %>%
       select(warddiv, election, target) %>%
       spread(election, target, fill = 0)
     
@@ -161,8 +214,13 @@ if(!use_saved_covariance){
     
     ## winsorize the svd
     for(i in 1:n_svd){
-      threshold <- quantile(abs(svd$u[,i]), 0.9995)
+      threshold <- quantile(abs(svd$u[,i]), 0.99)
       svd$u[,i] <- sign(svd$u[,i]) * pmin(abs(svd$u[,i]), threshold)
+    }
+    
+    for(i in 1:n_svd){
+      print(plot_dim(svd$u[,i]))
+      readline("Press Enter")
     }
     
     true_mat <- turnout_mat
@@ -180,73 +238,134 @@ if(!use_saved_covariance){
     diag(turnout_cov) <- diag(turnout_cov) + var(as.vector(fitted - true_mat))
     row.names(turnout_cov) <- turnout_wide$warddiv
     
+    
+    
     return(list(turnout_cov=turnout_cov, turnout_means=turnout_means))
   }  
   
-  turnout_cov_rep <- get_turnout_past("^REP")
-  turnout_cov_dem <- get_turnout_past("^DEM")
-  
-  df_pvote <- df_past %>%
-    filter(CANDIDATE != "Write In") %>%
-    filter(grepl("primary", election)) %>%
-    filter(grepl("DEM", PARTY, ignore.case=TRUE))
-  
-  table(df_pvote$election)
-  
-  df_pvote <- df_pvote %>%
-    group_by(election, OFFICE, warddiv) %>%
-    mutate(pvote = VOTES / sum(VOTES)) %>%
-    mutate(target = {if(use_log) log(pvote + 0.001) else pvote}) %>%
-    group_by()
-  
-  n_cand <- df_pvote %>% 
-    select(election, OFFICE, CANDIDATE) %>%
-    unique() %>%
-    group_by(election, OFFICE) %>%
-    summarise(ncand = n())
-  
-  if(use_log) prior_mean <- log(1/ncand) else prior_mean <- 1/ncand
-  df_pvote <- df_pvote %>%
-    left_join(n_cand) %>%
-    mutate(target_demean = target - prior_mean)
-  
-  pvote_wide <- df_pvote %>% 
-    unite("key", CANDIDATE, OFFICE, election) %>%
-    select(warddiv, key, target_demean) %>%
-    spread(key, target_demean, fill=0)
-  
-  pvote_mat <- as.matrix(pvote_wide %>% select(-warddiv))
-  
-  n_svd <- 5
-  svd <- svd(pvote_mat, n_svd, n_svd)
-  
-  ## winsorize the svd
-  for(i in 1:n_svd){
-    threshold <- quantile(abs(svd$u[,i]), 0.9995)
-    svd$u[,i] <- sign(svd$u[,i]) * pmin(abs(svd$u[,i]), threshold)
+  if(IS_PRIMARY){
+    turnout_cov_rep <- get_turnout_past(party_grep = "^REP")
+    turnout_cov_dem <- get_turnout_past(party_grep = "^DEM")
+  } else {
+    turnout_cov_general <- get_turnout_past()
   }
   
-  true_mat <- pvote_mat
+  #################################
+  ## pvote
+  #################################
   
-  fitted <- svd$u %*% diag(svd$d[1:n_svd]) %*% t(svd$v)
+  df_pvote <- df_past %>%
+    filter(candidate != "Write In")
   
-  print("Fitted vs True values, check for similarity:")
-  print("Fitted:")
-  print(fitted[1:6, 1:6])
-  print("True:")
-  print({x <- true_mat[1:6, 1:6]; colnames(x) <- NULL; x})
+  if(IS_PRIMARY){
+    df_pvote <- df_pvote %>% filter(grepl("primary", election))
+    df_pvote_dem <- df_pvote %>% filter(grepl("DEM", party, ignore.case=TRUE))
+    df_pvote_rep <- df_pvote %>% filter(grepl("REP", party, ignore.case=TRUE))
+    pvote_list <- list(rep = df_pvote_rep, dem = df_pvote_dem)
+  } else {
+    pvote_list <- list(general=df_pvote)
+  }
   
-  print("Calculating covariances")
-  pvote_cov <- svd$u %*% diag(svd$d[1:n_svd]) %*% cov(svd$v) %*% diag(svd$d[1:n_svd]) %*% t(svd$u)
-  diag(pvote_cov) <- diag(pvote_cov) + var(as.vector(fitted - true_mat))
-  row.names(pvote_cov) <- pvote_wide$warddiv
+  table(pvote_list[[1]]$election)
   
-  save(
-    pvote_cov,
-    svd,
-    turnout_cov_dem, 
-    turnout_cov_rep, 
-    file=paste0("saved_covars_log",use_log,".Rda")
+  cov_list <- list()
+  PLOT_DIMS <- TRUE
+  # if(IS_PRIMARY) stop("Need to implement primaries using df_pvote_dem")
+  for(pvote_name in names(pvote_list)){
+    print("pvote Covariance"); print(pvote_name)
+    df_pvote <- pvote_list[[pvote_name]]
+    df_pvote <- df_pvote %>%
+      group_by(election, office, warddiv) %>%
+      mutate(pvote = votes / sum(votes)) %>%
+      ungroup() %>%
+      mutate(target = {if(USE_LOG) log(pvote + 0.001) else pvote}) 
+  
+    n_cand <- df_pvote %>% 
+      select(election, office, candidate) %>%
+      unique() %>%
+      group_by(election, office) %>%
+      summarise(ncand = n()) %>%
+      mutate(
+        prior_mean = {if(USE_LOG) log(1/ncand) else 1/ncand}
+      )
+  
+    df_pvote <- df_pvote %>%
+      left_join(n_cand) %>%
+      mutate(target_demean = target - prior_mean)
+  
+    pvote_wide <- df_pvote %>% 
+      unite("key", candidate, office, election) %>%
+      select(warddiv, key, target_demean) %>%
+      spread(key, target_demean, fill=0)
+  
+    pvote_mat <- as.matrix(pvote_wide %>% select(-warddiv))
+    rownames(pvote_mat) <- pvote_wide$warddiv
+    
+    n_svd <- 5
+    svd <- svd(pvote_mat, n_svd, n_svd)
+  
+    ## winsorize the svd
+    for(i in 1:n_svd){
+      threshold <- quantile(abs(svd$u[,i]), 0.9995)
+      svd$u[,i] <- sign(svd$u[,i]) * pmin(abs(svd$u[,i]), threshold)
+      if(PLOT_DIMS) {
+        print(plot_dim(svd$u[,i]))
+        readline("Press Enter")
+      }
+    }
+    
+    true_mat <- pvote_mat
+    
+    fitted <- svd$u %*% diag(svd$d[1:n_svd]) %*% t(svd$v)
+    
+    print("Fitted vs True values, check for similarity:")
+    print("Fitted:")
+    print(fitted[1:6, 1:6])
+    print("True:")
+    print({x <- true_mat[1:6, 1:6]; colnames(x) <- NULL; x})
+    
+    print("Calculate ward-level variance")
+    resid <- (true_mat - fitted) %>%
+      as.data.frame() %>%
+      mutate(warddiv = pvote_wide$warddiv) %>%
+      gather("candidate", "value", -warddiv) 
+    
+    ward_resid <- resid %>%
+      mutate(ward=substr(warddiv,1,2)) %>%
+      group_by(ward, candidate) %>%
+      summarise(value = mean(value)) 
+    
+    resid_var <- var(as.vector(fitted - true_mat))
+    print("Total Resid Var:"); print(resid_var)
+    
+    ward_var <- var(ward_resid$value)
+    print("Ward Variance:"); print(ward_var)
+    
+    print("Calculating covariances")
+    pvote_cov <- svd$u %*% diag(svd$d[1:n_svd]) %*% cov(svd$v) %*% diag(svd$d[1:n_svd]) %*% t(svd$u)
+    for(ward in 1:66){
+      rows <- which(substr(pvote_wide$warddiv, 1, 2) == sprintf("%02d", ward))
+      pvote_cov[rows, rows] <- pvote_cov[rows, rows] + ward_var 
+    }
+    diag(pvote_cov) <- diag(pvote_cov) + resid_var - ward_var
+  
+    row.names(pvote_cov) <- pvote_wide$warddiv
+    
+    cov_list[[pvote_name]] <- pvote_cov
+  }
+  
+  if(IS_PRIMARY) {
+    cov_list[["turnout_cov_dem"]] <- turnout_cov_dem
+    cov_list[["turnout_cov_rep"]] <- turnout_cov_rep
+  } else {
+    cov_list[["turnout_cov_general"]] <- turnout_cov_general
+  }
+  
+  save(list = c(
+    "cov_list",
+    "svd"
+    ), 
+    file=sprintf("saved_covars_log%s_primary%s.Rda", USE_LOG, IS_PRIMARY)
   ) 
 
   #########################
@@ -266,15 +385,20 @@ if(!use_saved_covariance){
   save(divs_to_council, file="divs_to_council.Rda")
     
 } else {
-  load(paste0("saved_covars_log",use_log,".Rda"))
+  load(sprintf("saved_covars_log%s_primary%s.Rda", USE_LOG, IS_PRIMARY))
   load("divs_to_council.Rda")
 }
 
 #####################
 ## predict turnout
 #####################
+pretty_div <- function(x) paste(substr(x,1,2), substr(x,3,4), sep="-")
+if(IS_PRIMARY){
+  warddiv_order <- names(turnout_cov_dem$turnout_means)
+} else {
+  warddiv_order <- names(turnout_cov_general$turnout_means)
+} 
 
-warddiv_order <- names(turnout_cov_dem$turnout_means) 
 n_boot <- 400
 
 mvrnorm_chol <- function(n, mu, sigma_chol){
@@ -287,14 +411,14 @@ mvrnorm_chol <- function(n, mu, sigma_chol){
 get_turnout <- function(df, turnout_office, turnout_cov_list){
   divs_with_data <- unique(df$warddiv)
   a_rows <- match(divs_with_data, warddiv_order)
-  c_rows <- seq_along(turnout_cov_dem$turnout_means)[-a_rows]
+  c_rows <- seq_along(turnout_cov_list$turnout_means)[-a_rows]
   
   turnout_cov <- turnout_cov_list$turnout_cov
   turnout_means <- turnout_cov_list$turnout_means
-  observed_turnout <- df %>% filter(OFFICE == turnout_office) %>%
+  observed_turnout <- df %>% filter(office == turnout_office) %>%
     group_by(warddiv) %>%
     summarise(turnout = sum(Vote_Count)) %>%
-    mutate(target_obs = {if(use_log) log(turnout + 1) else turnout})
+    mutate(target_obs = {if(USE_LOG) log(turnout + 1) else turnout})
   
   ## Assume distribution is normal with covariance [A, B], [B', C]
   A <- turnout_cov[a_rows, a_rows]
@@ -312,7 +436,7 @@ get_turnout <- function(df, turnout_office, turnout_cov_list){
     turnout_sim <- as.data.frame(turnout_sim) %>% 
       mutate(sim = 1:n_boot) %>%
       gather("warddiv", "target", -sim) %>%
-      mutate(turnout = {if(use_log) exp(target) else target})
+      mutate(turnout = {if(USE_LOG) exp(target) else target})
   } else {
     turnout_sim <- data.frame(sim = integer(0), warddiv = character(0), turnout = numeric(0))
   }
@@ -331,16 +455,16 @@ get_needle_for_office <- function(
 
   divs_with_data <- unique(df$warddiv)
   a_rows <- match(divs_with_data, warddiv_order)
-  c_rows <- seq_along(turnout_cov_dem$turnout_means)[-a_rows]
+  c_rows <- seq_along(warddiv_order)[-a_rows]
   
   df_office <- df %>% 
-    filter(OFFICE == use_office) %>%
+    filter(office == use_office) %>%
     filter(warddiv %in% consider_divs) %>%
     group_by(warddiv) %>%
     mutate(pvote = Vote_Count/sum(Vote_Count)) %>%
     group_by() %>%
     mutate(
-      target = {if(use_log) log(pvote+0.001) else pvote},
+      target = {if(USE_LOG) log(pvote+0.001) else pvote},
       candidate=format_name(candidate)
     )
 
@@ -367,7 +491,7 @@ get_needle_for_office <- function(
   
   if(length(a_rows_i) <= 1) rownames(c_sigma) <- names(B) ## otherwise it gets inherited
   
-  if(use_log) prior_mean <- log(1/ncand) else prior_mean <- 1/ncand
+  if(USE_LOG) prior_mean <- log(1/ncand) else prior_mean <- 1/ncand
   
   if(length(c_rows_i) > 0){
     chol_c_sigma <- chol(c_sigma)
@@ -390,7 +514,7 @@ get_needle_for_office <- function(
     }
     
     office_sim <- bind_rows(df_list) %>%
-      mutate(pvote = {if(use_log) exp(target) else pmax(target,0)}) %>%
+      mutate(pvote = {if(USE_LOG) exp(target) else pmax(target,0)}) %>%
       group_by(warddiv, sim) %>%
       mutate(pvote = pvote / sum(pvote)) %>%
       group_by()
@@ -470,7 +594,7 @@ get_needle_for_office <- function(
       strip.text = element_text(face="bold", size = 20)
     )
     # ggtitle(sprintf("Probability of winning %s", office_name))
-  if(use_maps){
+  if(USE_MAPS){
     div_sim <- df_office %>%
       group_by(warddiv) %>%
       mutate(
@@ -525,16 +649,27 @@ get_needle_for_office <- function(
 }
 
 if(FALSE){
-  turnout_dem <- get_turnout(df, "MAYOR-DEM", turnout_cov_dem)
-  turnout_rep <- get_turnout(df, "COUNCIL AT LARGE-REP", turnout_cov_rep) %>% mutate(turnout = turnout / 2)
+  if(IS_PRIMARY){
+    mayor_office <- "MAYOR-DEM" 
+    pred_office <- "COUNCIL AT LARGE-DEM"
+    turnout_cov <- cov_list$turnout_cov_dem
+  } else {
+    mayor_office <- "MAYOR"
+    pred_office <- "COUNCIL AT LARGE"
+    turnout_cov <- cov_list$turnout_cov_general
+  }
   
-  council_at_large_dem_plot <- get_needle_for_office(
+  turnout_sim <- get_turnout(df, mayor_office, turnout_cov)
+  
+  if(IS_PRIMARY) n_council_winners <- 5 else n_council_winners <- 7
+  
+  council_at_large_plot <- get_needle_for_office(
     df,
-    use_office="COUNCIL AT LARGE-DEM",
-    office_name="Council At Large (D)",
-    turnout_sim = turnout_dem,
-    n_winners=5
+    use_office=pred_office,
+    office_name="Council At Large",
+    turnout_sim = turnout_sim,
+    n_winners=n_council_winners
   )
-  council_at_large_dem_plot[["needle"]] %>% print()
+  council_at_large_plot[["needle"]] %>% print()
 }
 

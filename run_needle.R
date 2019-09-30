@@ -6,7 +6,7 @@ while(TRUE){
   print("rmarkdown")
   rmarkdown::render( 
     "needle.Rmd", 
-    output_file = "election_needle.html"
+    output_file="election_needle.html"
   )
   
   print("copy and git")
