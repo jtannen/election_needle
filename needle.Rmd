@@ -23,67 +23,120 @@ table, td, th {
 ```{r setup0, include=FALSE, out.width='80%'}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message=FALSE)
 
-USE_SAVED_COVARIANCE <- TRUE
-USE_MAPS <- TRUE
-USE_LOGS <- TRUE
-IS_PRIMARY <- FALSE
+# USE_MAPS <- TRUE
+# ELECTION <- "20191105"
+# CONFIG <- get_config(ELECTION)
+# USE_LOG <- CONFIG$use_log
 
 setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
-source("needle.R")
+# source("needle.R")
 
-files <- list.files("raw_data")
-file <- max(files)
-df <- load_data(file)
-
-if(IS_PRIMARY){
-  mayor_office <- "MAYOR-DEM" 
-  pred_office <- "COUNCIL AT LARGE-DEM"
-  turnout_cov <- cov_list$turnout_cov_dem
+if(ELECTION == "20190521"){
+  file <- "PRECINCT_20190521_H20_M38_S25.txt"
 } else {
-  mayor_office <- "MAYOR"
-  pred_office <- "COUNCIL AT LARGE"
-  turnout_cov <- cov_list$turnout_cov_general
+  files <- list.files("raw_data", full.names = T)
+  file <- max(files)
 }
 
-turnout_sim <- get_turnout(df, mayor_office, turnout_cov)
+turnout_office <- "MAYOR"
+
+df <- load_data(file)
+current_time <- file.info(file)$mtime
+
+n_reporting <- length(unique(df$warddiv))
+needle_params <- readRDS(sprintf("outputs/needleparams_%s_log%s.Rds", ELECTION, USE_LOG))
+
+if(CONFIG$is_primary){
+  office_suffix <- function(x) paste0(x, "-DEM")
+  turnout_svd <- needle_params@turnout_svds$dem
+  n_council_winners <- 5
+} else {
+  office_suffix <- identity
+  turnout_svd <- needle_params@turnout_svds$general
+  n_council_winners <- 7
+}
+pvote_svd <- needle_params@pvote_svd
+
+turnout_sim <- simulate_turnout(
+  df=df, 
+  turnout_office=office_suffix(turnout_office), 
+  turnout_svd=turnout_svd, 
+  verbose=FALSE
+)
 ```
 
 # Live Election Night Predictions
-Updated at `r gsub("^0","", format(lubridate::ymd_hms(Sys.time()), "%I:%M"))`, with `r scales::comma(length(a_rows))` out of `r scales::comma(length(warddiv_order))` precincts reporting.
+Updated at `r gsub("^0","", format(lubridate::ymd_hms(Sys.time()), "%I:%M"))`, with `r scales::comma(n_reporting)` out of `r scales::comma(nrow(divs))` precincts reporting.
 
-DISCLOSURE: This is an experimental project to project final results from incomplete returns. Read about [the ways it did well, and the ways it didn't]() in the primary.
+**Disclosure**: This is an experimental project to project final results from incomplete returns. Read about [the ways it did well, and the ways it didn't](https://sixtysixwards.com/home/was-the-needle-omniscient-or-lucky/) in the primary. TLDR: I use historic correlations to predict the divisions that haven't reported yet, including uncertainty. If divisions correlate differently this year than they have in the past, this will be wrong. Of course, that usually doesn't happen.
 
 ### Council At Large
-```{r council_at_large, fig.asp = 2.220, out.width="100%"}
-council_at_large_plot <- get_needle_for_office(
-  use_office="COUNCIL AT LARGE",
-  office_name="Council At Large",
-  turnout_sim = turnout_sim,
-  n_winners=7
+```{r council_at_large, fig.asp = 1.2, out.width="100%"}
+## Since we have 3 columns and ceil(ncand/3) rows, 
+## fig.asp should be ceil(ncand/3) / 3
+simulate_office <- function(
+  office, 
+  office_name, 
+  n_winners=1,
+  consider_divs=NULL
+){
+  simulate_pvote(
+    df,
+    use_office=office_suffix(office),
+    office_name=office_name,
+    turnout_sim=turnout_sim,
+    pvote_svd=pvote_svd,
+    n_winners=n_winners,
+    verbose=FALSE,
+    consider_divs=consider_divs
+  )
+}
+
+council_at_large_plot <- simulate_office(
+  "COUNCIL AT LARGE",
+  "Council At Large",
+  n_winners=n_council_winners
 )
-council_at_large_dem_plot[["needle"]] %>% print()
+
+council_at_large_plot[["needle"]] %>% print()
 ```
 
 ### Council District 10
 ```{r , fig.asp = 0.5, out.width="100%"}
-district_10_plot <- get_needle_for_office(
-  use_office="DISTRICT COUNCIL-10TH DISTRICT",
-  office_name="Council District 10",
-  turnout_sim = turnout_sim,
-  n_winners=1,
-  consider_divs = divs_to_council$warddiv[divs_to_council$council == "10"]
-)
+get_council_divs <- function(district){
+  divs_to_council$warddiv[
+    divs_to_council$council == as.character(district)
+  ]
+}
+
+add_suffix_to_num <- function(x){
+  x <- as.character(x)
+  last_digit <- substr(x, nchar(x), nchar(x))
+  if(substr(x, nchar(x)-1, nchar(x)) %in% c(11,12,13)) return(paste0(x, "TH"))
+  if(last_digit==1) return(paste0(x, "ST"))
+  if(last_digit==2) return(paste0(x, "ND"))
+  if(last_digit==3) return(paste0(x, "RD"))
+  return(paste0(x, "TH"))
+}
+
+simulate_district <- function(district_num){
+  office <- sprintf("DISTRICT COUNCIL-%s DISTRICT", add_suffix_to_num(district_num))
+  simulate_office(
+    office,
+    office_name=sprintf("Council District %s", district_num),
+    consider_divs = get_council_divs(district_num)
+  )
+}
+
+district_10_plot <- simulate_district(10)
+
 district_10_plot[["needle"]] %>% print()
 ```
 
 ### Mayor
 ```{r mayor, fig.asp = 0.33, out.width="100%"}
-mayor_plot <- get_needle_for_office(
-  use_office="MAYOR",
-  office_name="Mayor)",
-  turnout_sim = turnout_sim,
-  n_winners=1
-)
+mayor_plot <- simulate_office("MAYOR", "Mayor")
+
 mayor_plot[["needle"]] %>% print()
 ```
 
@@ -91,7 +144,7 @@ mayor_plot[["needle"]] %>% print()
 # Maps
 
 ### Council At Large
-```{r council_at_large_map, fig.asp = 3.5, out.width="100%"}
+```{r council_at_large_map, fig.asp = 1.2, out.width="100%"}
 council_at_large_plot[["map"]] %>% print()
 ```
 
