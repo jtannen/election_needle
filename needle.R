@@ -3,9 +3,9 @@ library(MASS)
 library(sf)
 select <- dplyr::select
 
-setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
+# setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
 source("needle_util.R")
-source("svd.R")
+source("svd_for_turnout_and_pvote.R")
 source("load_data.R")
 
 if(!exists("USE_MAPS")) USE_MAPS <- TRUE
@@ -16,9 +16,6 @@ set.seed(215)
 # ELECTION <- "20191105"
 # CONFIG <- get_config(ELECTION)
 # USE_LOG <- CONFIG$use_log
-
-needle_params <- readRDS(sprintf("outputs/needleparams_%s_log%s.Rds", ELECTION, USE_LOG))
-
 
 ###############################
 ## Load Data
@@ -33,7 +30,7 @@ if(FALSE){
 
 ## Load a specific past download
 if(FALSE){
-  df <- load_data("PRECINCT_20190521_H20_M38_S25.txt")
+  df <- load_data("raw_data/results_20191105_215542.csv")
 }
 
 ## create a fake download from df_all
@@ -149,7 +146,7 @@ simulate_turnout <- function(df, turnout_office, turnout_svd, verbose=TRUE){
     with(mean(target_obs - mean))
   
   vprint("Sampling from posterior")
-  sim <- posterior_sample(
+  sim <- sample_from_posterior(
     svd=turnout_svd, 
     obs=observed_turnout$target_obs, 
     obs_id=observed_turnout$warddiv, 
@@ -201,7 +198,7 @@ simulate_pvote <- function(
     observed_pvote <- df_office %>%
       filter(candidate == cand)
     
-    pvote_cand_sample <- posterior_sample(
+    pvote_cand_sample <- sample_from_posterior(
       pvote_svd, 
       observed_pvote$target, 
       observed_pvote$warddiv, 
@@ -307,7 +304,7 @@ get_needle_plot <- function(winners_sim, candidate_order){
       color=strong_purple
     ) +
     geom_text(
-      aes(label = paste0("(", round(100*pvote),"% of vote)")), 
+      aes(label = paste0("(", round(100*pvote, 1),"% of vote)")), 
       x=-1, y=0.5, hjust=0, vjust=0,
       # fontface="bold",
       color="grey50"
@@ -363,6 +360,8 @@ get_sim_map <- function(df_office, consider_divs, candidate_order){
 }
 
 if(FALSE){
+  needle_params <- readRDS(sprintf("outputs/needleparams_%s_log%s.Rds", ELECTION, USE_LOG))
+  
   if(CONFIG$is_primary){
     mayor_office <- "MAYOR-DEM" 
     pred_office <- "COUNCIL AT LARGE-DEM"

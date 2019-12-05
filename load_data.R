@@ -1,4 +1,5 @@
 library(tidyverse)
+select <- dplyr::select
 
 source("needle_util.R")
 
@@ -7,12 +8,13 @@ source("needle_util.R")
 #####################
 
 get_download_link <- function(){
-  results_site <- readLines("http://phillyelectionresults.com/ExportFiles.html")
-  link_grep <- "http://getphillyelectionresults\\.com/export/PRECINCT_[0-9]+_H[0-9]+_M[0-9]+_S[0-9]+\\.txt"
-  link_line <- grep(link_grep, results_site, value = TRUE)
-  link <- gsub('.*href=\\\"(.*)\\\" download.*', "\\1", link_line)
-  filename <- gsub("http://getphillyelectionresults.com/export/(.*)", "\\1", link)
-  
+  # results_site <- readLines("http://phillyelectionresults.com/ExportFiles.html")
+  # link_grep <- "http://getphillyelectionresults\\.com/export/PRECINCT_[0-9]+_H[0-9]+_M[0-9]+_S[0-9]+\\.txt"
+  # link_line <- grep(link_grep, results_site, value = TRUE)
+  # link <- gsub('.*href=\\\"(.*)\\\" download.*', "\\1", link_line)
+  # filename <- gsub("http://getphillyelectionresults.com/export/(.*)", "\\1", link)
+  link <- "https://files7.philadelphiavotes.com/election-results/2019_GENERAL/enr/division-level-results.csv"  
+  filename <- sprintf("division_level_results_%s.csv", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"))
   return(list(link=link, filename=filename))  
 }
 
@@ -28,11 +30,12 @@ read_download <- function(file){
     mutate(key = asnum(gsub("^X", "", key))) %>%
     mutate(office = colnames[key], candidate=candidates[key]) %>%
     mutate(
+      party = gsub("(.*) \\((.*)\\)$", "\\2", candidate),
       candidate = gsub("(.*) \\(.*\\)$", "\\1", candidate),
       office = ifelse(office == "COUNCIL AT-LARGE", "COUNCIL AT LARGE", office),
       office = ifelse(candidate %in% c('JUDY MOORE', "BRIAN O'NEILL"), "DISTRICT COUNCIL-10TH DISTRICT", office)
     ) %>% 
-    select(warddiv, office, candidate, votes) %>%
+    select(warddiv, office, candidate, party, votes) %>%
     filter(warddiv != "COUNTY TOTALS")
 
   return(df)
@@ -55,7 +58,7 @@ download_election_results <- function(verbose=TRUE) {
   destfile <- sprintf("raw_data/results_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
   download.file(link, destfile)
   
-  if(verbose) print(sprintf("%s downloaded.", filename))
+  if(verbose) print(sprintf("%s downloaded.", destfile))
   return(destfile)
 }
 

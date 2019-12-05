@@ -31,8 +31,8 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message=FALSE)
 setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
 # source("needle.R")
 
-if(ELECTION == "20190521"){
-  file <- "PRECINCT_20190521_H20_M38_S25.txt"
+if(ELECTION == "20191105"){
+  file <- "raw_data/results_20191105_213752.csv"
 } else {
   files <- list.files("raw_data", full.names = T)
   file <- max(files)
@@ -43,8 +43,10 @@ turnout_office <- "MAYOR"
 df <- load_data(file)
 current_time <- file.info(file)$mtime
 
+pretty_time <- gsub("^0","", format(lubridate::ymd_hms(Sys.time()), "%I:%M"))
+
 n_reporting <- length(unique(df$warddiv))
-needle_params <- readRDS(sprintf("outputs/needleparams_%s_log%s.Rds", ELECTION, USE_LOG))
+needle_params <- readRDS(sprintf("outputs/needleparams_%s_log%s_svd.Rds", ELECTION, USE_LOG))
 
 if(CONFIG$is_primary){
   office_suffix <- function(x) paste0(x, "-DEM")
@@ -66,12 +68,12 @@ turnout_sim <- simulate_turnout(
 ```
 
 # Live Election Night Predictions
-Updated at `r gsub("^0","", format(lubridate::ymd_hms(Sys.time()), "%I:%M"))`, with `r scales::comma(n_reporting)` out of `r scales::comma(nrow(divs))` precincts reporting.
+Updated at `r pretty_time`, with `r scales::comma(n_reporting)` out of `r scales::comma(nrow(divs))` precincts reporting.
 
 **Disclosure**: This is an experimental project to project final results from incomplete returns. Read about [the ways it did well, and the ways it didn't](https://sixtysixwards.com/home/was-the-needle-omniscient-or-lucky/) in the primary. TLDR: I use historic correlations to predict the divisions that haven't reported yet, including uncertainty. If divisions correlate differently this year than they have in the past, this will be wrong. Of course, that usually doesn't happen.
 
 ### Council At Large
-```{r council_at_large, fig.asp = 1.2, out.width="100%"}
+```{r council_at_large, fig.asp = 2.0, out.width="100%"}
 ## Since we have 3 columns and ceil(ncand/3) rows, 
 ## fig.asp should be ceil(ncand/3) / 3
 simulate_office <- function(
@@ -140,11 +142,10 @@ mayor_plot <- simulate_office("MAYOR", "Mayor")
 mayor_plot[["needle"]] %>% print()
 ```
 
-
 # Maps
 
 ### Council At Large
-```{r council_at_large_map, fig.asp = 1.2, out.width="100%"}
+```{r council_at_large_map, fig.asp = 2.0, out.width="100%"}
 council_at_large_plot[["map"]] %>% print()
 ```
 
@@ -158,3 +159,136 @@ district_10_plot[["map"]] %>% print()
 mayor_plot[["map"]] %>% print()
 ```
 
+# Diagnostics
+
+```{r diagnostics}
+div_cats <- readRDS("../../data/processed_data/div_cats_2019-11-08.RDS")
+
+pretty_simulated <- function(simulated) {
+  ifelse(simulated, "Simulated Divisions", "Reporting Divisions")
+}
+
+turnout_sim %<>% mutate(simulated = pretty_simulated(simulated))
+
+turnout_cat <- turnout_sim %>%
+    left_join(div_cats %>% select(warddiv, cat)) %>%
+    group_by(simulated, cat, sim) %>%
+    summarise(
+      n_divs = length(unique(warddiv)),
+      turnout = sum(turnout)
+    ) %>%
+    gather(key="var", value="value", n_divs, turnout) %>%
+    group_by(simulated, cat, var) %>%
+    summarise(
+      mean = mean(value),
+      pct_975 = quantile(value, 0.975),
+      pct_025 = quantile(value, 0.025)
+    )
+
+cat_colors <- c(
+   "Black Voters" = light_blue, 
+   "Wealthy Progressives" = light_red, 
+   "White Moderates" = light_orange, 
+   "Hispanic North Philly" = light_green
+)
+
+gg_turnout_cat <- ggplot(
+  turnout_cat %>% mutate(key = ifelse(var=="turnout", "Turnout", "N(Divisions)")), 
+  aes(x=cat, y=mean)
+) + 
+  geom_bar(stat="identity", aes(fill=cat)) +
+  geom_errorbar(aes(ymin = pct_025, ymax=pct_975), width = 0.5) +
+  facet_grid(key ~ simulated, scales="free_y") +
+  theme_sixtysix() %+replace% theme(axis.text.x = element_blank()) +
+  scale_y_continuous(labels=scales::comma) +
+  scale_fill_manual(values=cat_colors) +
+  labs(
+    x=NULL,
+    y=NULL,
+    title="Turnout by Voting Bloc",
+    fill=NULL
+  )
+print(gg_turnout_cat)
+```
+
+```{r candidate_sim_overall, out.width="100%", fig.asp=1}
+gg_office_overall <- function(sim_list){
+  cand_sim <- sim_list$office_sim %>%
+    mutate(simulated = pretty_simulated(simulated)) %>%
+    ## Doesn't account for different cands/voter
+    left_join(turnout_sim %>% select(sim, warddiv, turnout)) %>%
+    group_by(candidate, sim, simulated) %>%
+    summarise(pvote = weighted.mean(pvote, w=turnout)) %>%
+    group_by(candidate, simulated) %>%
+    summarise(
+      mean = mean(pvote),
+      pct_975 = quantile(pvote, 0.975),
+      pct_025 = quantile(pvote, 0.025)
+    )
+  
+  cand_order <- sim_list$winners_sim %>% arrange(desc(pvote)) %>% with(candidate)
+  cand_sim$candidate <- factor(cand_sim$candidate, levels = cand_order)
+  
+  ggplot(
+    cand_sim, 
+    aes(x=candidate, y=100*mean)
+  ) + 
+    geom_bar(stat="identity") +
+    geom_errorbar(aes(ymin =100* pct_025, ymax=100*pct_975), width = 0.5) +
+    geom_text(y = 0.4, aes(label = sprintf("%0.1f", 100*mean)), color="white") +
+    facet_grid(simulated ~ .) +
+    theme_sixtysix() %+replace% 
+    theme(
+      axis.text.x = element_text(angle=45, vjust = 0.8, hjust=0.8)
+    ) +
+    scale_y_continuous(labels=scales::comma) +
+    labs(
+      x=NULL,
+      y="Percent of the vote",
+      title="Simulated results",
+      fill=NULL
+    )
+}
+
+print(gg_office_overall(council_at_large_plot))
+```
+
+```{r office_cat, out.width="100%", fig.asp=5}
+gg_office_cat <- function(sim_list){
+  cand_sim_cat <- sim_list$office_sim %>%
+    mutate(simulated = pretty_simulated(simulated)) %>%
+    left_join(turnout_sim %>% select(sim, warddiv, turnout)) %>%
+    left_join(div_cats %>% select(warddiv, cat)) %>%
+    group_by(candidate, sim, cat, simulated) %>%
+    summarise(pvote = weighted.mean(pvote, w=turnout)) %>%
+    group_by(candidate, cat, simulated) %>%
+    summarise(
+      mean = mean(pvote),
+      pct_975 = quantile(pvote, 0.975),
+      pct_025 = quantile(pvote, 0.025)
+    )
+  
+  cand_order <- sim_list$winners_sim %>% arrange(desc(pvote)) %>% with(candidate)
+  cand_sim_cat$candidate <- factor(cand_sim_cat$candidate, levels = cand_order)
+  
+  ggplot(
+    cand_sim_cat, 
+    aes(x=cat, y=100*mean)
+  ) + 
+    geom_bar(stat="identity", aes(fill=cat)) +
+    geom_errorbar(aes(ymin =100* pct_025, ymax=100*pct_975), width = 0.5) +
+    facet_grid(candidate ~ simulated) +
+    theme_sixtysix() %+replace% theme(axis.text.x = element_blank()) +
+    scale_y_continuous(labels=scales::comma) +
+    scale_fill_manual(values=cat_colors) +
+    labs(
+      x=NULL,
+      y="Percent of the vote",
+      title=sprintf("Needle Results as of %s pm", pretty_time),
+      fill=NULL
+    )
+}
+
+print(gg_office_cat(council_at_large_plot))
+
+```

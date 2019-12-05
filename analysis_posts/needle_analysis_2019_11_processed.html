@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+<meta name="author" content="Jonathan Tannen" />
+
+<meta name="date" content="2019-11-26" />
+
+<title>Evaluating the Needle</title>
+
+<script src="needle_analysis_2019_11_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="needle_analysis_2019_11_files/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="needle_analysis_2019_11_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="needle_analysis_2019_11_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="needle_analysis_2019_11_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="needle_analysis_2019_11_files/navigation-1.1/tabsets.js"></script>
+<link href="needle_analysis_2019_11_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="needle_analysis_2019_11_files/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+</style>
+
+
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "&#xe258;";
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="fluid-row" id="header">
+
+
+
+<h1 class="title toc-ignore">Evaluating the Needle</h1>
+<h4 class="author">Jonathan Tannen</h4>
+<h4 class="date">November 26, 2019</h4>
+
+</div>
+
+
+<div id="the-needle-was-right-again.-heres-what-im-changing." class="section level1">
+<h1>The Needle was right, again. Here’s what I’m changing.</h1>
+<p>Once again, on election night, the Needle was 100% confident who would win by 9:37 pm.</p>
+<p>Once again, I doubted.</p>
+<p>Once again, it was exactly right.</p>
+<p>Let’s dig into what the Needle knew and when it knew it, and what I’m going to change so that I finally trust it.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary>
+<pre class="r"><code>ELECTION &lt;- 20191105
+USE_LOG &lt;- TRUE
+source(sprintf(&quot;configs/config_%s.R&quot;, ELECTION))
+
+source(&quot;needle.R&quot;)timestamp &lt;- &quot;213752&quot;
+df &lt;- load_data(sprintf(&quot;raw_data/results_20191105_%s.csv&quot;, timestamp))
+df_eod &lt;- load_data(&quot;raw_data/results_20191119_194343.csv&quot;)
+
+needle_params &lt;- readRDS(
+  sprintf(&quot;outputs/needleparams_%s_log%s_svd.Rds&quot;, ELECTION, USE_LOG)
+)
+
+office_suffix &lt;- identity
+turnout_svd &lt;- needle_params@turnout_svds$general
+n_council_winners &lt;- 7
+turnout_office &lt;- &quot;MAYOR&quot;</code></pre>
+</details>
+<div id="what-the-needle-knew-and-when-it-knew-it" class="section level2">
+<h2>What the Needle knew and when it knew it</h2>
+<p>First, an overview of the Needle. (One day, I’ll publish the code on github… I just have dreams of adding all the best practices we all procrastinate on.)</p>
+<p>The structure of the needle is simple: 1. Before election day, I calculate the historic covariances among divisions in turnout and votes for specific candidates. 2. When partial results come in, I calculate the <a href="https://en.wikipedia.org/wiki/Multivariate_normal_distribution#Conditional_distributions">distribution of the not-yet-reporting divisions conditional on the w</a> 3. I simulate each division’s (a) turnout and (b) votes for candidates from that posterior distribution. The fraction of times a candidate wins in those simulations is their probability of winning.</p>
+<p>At 9:37, the Commissioners posted the spreadsheet from the new voting machines. With 371 out of 1,703 divisions reporting, Kendra Brooks had received 10,007 votes (4.8%), David Oh 8,403 (4.0%), Nicolas O’Rourke 7,887 (3.8%), and Al Taubenberger 7,071 (3.3%).</p>
+<p>The Needle spun into gear, and here’s what it spat out.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary>
+<pre class="r"><code>pretty_simulated &lt;- function(simulated) {
+  ifelse(simulated, &quot;Simulated Divisions&quot;, &quot;Reporting Divisions&quot;)
+}
+
+turnout_sim &lt;- simulate_turnout(
+  df=df, 
+  turnout_office=office_suffix(turnout_office), 
+  turnout_svd=turnout_svd, 
+  verbose=TRUE
+) %&gt;%
+  mutate(simulated = pretty_simulated(simulated))
+  
+pvote_svd &lt;- needle_params@pvote_svd
+simulate_office &lt;- function(
+  office, 
+  office_name, 
+  n_winners=1,
+  consider_divs=NULL
+){
+  simulate_pvote(
+    df,
+    use_office=office_suffix(office),
+    office_name=office_name,
+    turnout_sim=turnout_sim,
+    pvote_svd=pvote_svd,
+    n_winners=n_winners,
+    verbose=FALSE,
+    consider_divs=consider_divs
+  )
+}
+
+council_sim &lt;- simulate_office(
+  &quot;COUNCIL AT LARGE&quot;,
+  &quot;Council At Large&quot;,
+  n_winners=7
+)
+print(council_sim$needle)</code></pre>
+</details>
+<p><img src="https://sixtysixwards.com/wp-content/uploads/2019/11/turnout_sim-1.png" width="100%" style="display: block; margin: auto;" /></p>
+<p>I saw that and freaked out. There was no doubt that Brooks would win? That O’Rourke would lose to Oh? He was only down 516 votes!</p>
+<p>What the needle knew (and I didn’t) was where the remaining votes were going to come from, and how easy it is to predict those divisions once you’ve got 317 data points.</p>
+<p>Here’s what the Needle was predicting under the hood.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary>
+<pre class="r"><code>candidates &lt;- c(&quot;Kendra Brooks&quot;, &quot;David Oh&quot;, &quot;Nicolas O&#39;Rourke&quot;, &quot;Al Taubenberger&quot;)
+filter_to_candidates &lt;- function(df){
+  df %&gt;%
+    filter(candidate %in% candidates) %&gt;%
+    mutate(candidate=factor(candidate, levels=candidates))
+}
+
+cand_sim &lt;- council_sim$office_sim %&gt;%
+  mutate(simulated = pretty_simulated(simulated)) %&gt;%
+  filter_to_candidates() %&gt;%
+  ## Doesn&#39;t account for different cands/voter
+  left_join(turnout_sim %&gt;% select(sim, warddiv, turnout)) %&gt;%
+  group_by(candidate, sim, simulated) %&gt;%
+  summarise(pvote = weighted.mean(pvote, w=turnout)) %&gt;%
+  group_by(candidate, simulated) %&gt;%
+  summarise(
+    mean = mean(pvote),
+    pct_975 = quantile(pvote, 0.975),
+    pct_025 = quantile(pvote, 0.025)
+  )
+
+cand_true &lt;- df_eod %&gt;%
+  filter(office == &quot;COUNCIL AT LARGE&quot;) %&gt;%
+  group_by(warddiv) %&gt;%
+  mutate(total_votes = sum(votes), pvote = votes/total_votes) %&gt;%
+  filter_to_candidates() %&gt;%
+  left_join(turnout_sim %&gt;% filter(sim==1) %&gt;% select(warddiv, simulated)) %&gt;%
+  group_by(candidate, simulated) %&gt;%
+  summarise(votes=sum(votes), pvote = weighted.mean(pvote, w=total_votes)) %&gt;%
+  ungroup()
+
+pretty_time &lt;- sprintf(
+  &quot;%s:%s&quot;, 
+  floor(as.numeric(timestamp)/1e4) - 12,
+  floor(as.numeric(timestamp)/1e2) %% 100
+)
+
+sim_subtitle &lt;- &quot;Dots are actual eventual results. Intervals are 95% of simulations.&quot;
+
+ggplot(
+  cand_sim, 
+  aes(x=candidate, y=100*mean)
+) + 
+  geom_bar(stat=&quot;identity&quot;) +
+  geom_errorbar(aes(ymin =100* pct_025, ymax=100*pct_975), width = 0.5) +
+  geom_text(y = 0.4, aes(label = sprintf(&quot;%0.1f&quot;, 100*mean)), color=&quot;white&quot;) +
+  facet_grid(. ~ simulated) +
+  geom_point(
+    data = cand_true %&gt;% rename(mean=pvote)
+  ) +
+  theme_sixtysix() %+replace% 
+  theme(
+    axis.text.x = element_text(angle=45, vjust = 0.8, hjust=0.8)
+  ) +
+  scale_y_continuous(labels=scales::comma) +
+  # scale_fill_manual(values=cat_colors) +
+  labs(
+    x=NULL,
+    y=&quot;Percent of the vote&quot;,
+    title=sprintf(&quot;Needle Results as of %s pm&quot;, pretty_time),
+    subtitle=sim_subtitle,
+    fill=NULL
+  )</code></pre>
+</details>
+<p><img src="https://sixtysixwards.com/wp-content/uploads/2019/11/pvote-1.png" width="2100" style="display: block; margin: auto;" /></p>
+<p>The Needle provided narrow error bars for the candidates’ performance in the remaining divisions. It predicted, for example, that Brooks would win between 3.8 and 4.7% of the votes in the remaining divisions; she got 4.4. It predicted Oh would get between 3.2 and 4.0%, and that O’Rourke between 2.7 and 3.4%. Oh really got 4.0%, and O’Rourke 3.4%. Adding in the divisions that were already locked in, O’Rourke didn’t beat Oh in a single simulation.</p>
+<p>One thing worries me in the plot above. Notice that Oh, O’Rourke, and especially Taubenberger all had actual results at the high end of my simulations. That could occur due to random chance, but is pretty unlikely. And it turns out something went wrong.</p>
+</div>
+<div id="simulations-by-neighborhood-bloc" class="section level2">
+<h2>Simulations by Neighborhood Bloc</h2>
+<p>In retrospect, what really would have convinced me that the Needle was working as advertised would be plotting the results by voting bloc. At 9:37 on November 5th, here’s what that would have shown.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary>
+<pre class="r"><code>div_cats &lt;- readRDS(&quot;../../data/processed_data/div_cats_2019-11-08.RDS&quot;)
+
+cand_sim_cat &lt;- council_sim$office_sim %&gt;%
+  mutate(simulated = pretty_simulated(simulated)) %&gt;%
+  filter_to_candidates() %&gt;%
+  ## Doesn&#39;t account for different cands/voter
+  left_join(turnout_sim %&gt;% select(sim, warddiv, turnout)) %&gt;%
+  left_join(div_cats %&gt;% select(warddiv, cat)) %&gt;%
+  group_by(candidate, sim, cat, simulated) %&gt;%
+  summarise(pvote = weighted.mean(pvote, w=turnout)) %&gt;%
+  group_by(candidate, cat, simulated) %&gt;%
+  summarise(
+    mean = mean(pvote),
+    pct_975 = quantile(pvote, 0.975),
+    pct_025 = quantile(pvote, 0.025)
+  )
+
+cand_true_cat &lt;- df_eod %&gt;%
+  filter(office == &quot;COUNCIL AT LARGE&quot;) %&gt;%
+  group_by(warddiv) %&gt;%
+  mutate(total_votes = sum(votes), pvote = votes/total_votes) %&gt;%
+  filter_to_candidates() %&gt;%
+  left_join(div_cats %&gt;% select(warddiv, cat)) %&gt;%
+  left_join(turnout_sim %&gt;% filter(sim==1) %&gt;% select(warddiv, simulated)) %&gt;%
+  group_by(candidate, cat, simulated) %&gt;%
+  summarise(votes=sum(votes), pvote = weighted.mean(pvote, w=total_votes)) %&gt;%
+  ungroup()
+
+
+cat_colors &lt;- c(
+   &quot;Black Voters&quot; = light_blue, 
+   &quot;Wealthy Progressives&quot; = light_red, 
+   &quot;White Moderates&quot; = light_orange, 
+   &quot;Hispanic North Philly&quot; = light_green
+)
+  
+ggplot(
+  cand_sim_cat, 
+  aes(x=cat, y=100*mean)
+) + 
+  geom_bar(stat=&quot;identity&quot;, aes(fill=cat)) +
+  geom_errorbar(aes(ymin =100* pct_025, ymax=100*pct_975), width = 0.5) +
+  facet_grid(candidate ~ simulated) +
+  geom_point(
+    data = cand_true_cat %&gt;% rename(mean=pvote)
+  ) +
+  theme_sixtysix() %+replace% theme(axis.text.x = element_blank()) +
+  scale_y_continuous(labels=scales::comma) +
+  scale_fill_manual(values=cat_colors) +
+  labs(
+    x=NULL,
+    y=&quot;Percent of the vote&quot;,
+    title=sprintf(&quot;Needle Results as of %s pm&quot;, pretty_time),
+    subtitle=sim_subtitle,
+    fill=NULL
+  )</code></pre>
+</details>
+<p><img src="https://sixtysixwards.com/wp-content/uploads/2019/11/cand_pvote_cat-1.png" width="100%" style="display: block; margin: auto;" /></p>
+<p>The Needle was largely predicting that candidates would perform similarly in the remaining divisions as they had already done in divisions from the same blocs. And it had a reasonable uncertainty for them, +/- 1 percentage point in their bases. Those predictions were fairly accurate, but with not quite enough uncertainty; I think because they did better in the Northeast than their performance in South Philly and the River Wards would suggest.</p>
+<p>Percent of the vote is just half of the calculation, though. We also need to know the turnout in each of those blocs.</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary>
+<pre class="r"><code>cat_sim &lt;- turnout_sim %&gt;%
+    left_join(div_cats %&gt;% select(warddiv, cat)) %&gt;%
+    group_by(simulated, cat, sim) %&gt;%
+    summarise(
+      n_divs = length(unique(warddiv)),
+      turnout = sum(turnout)
+    ) %&gt;%
+    gather(key=&quot;var&quot;, value=&quot;value&quot;, n_divs, turnout) %&gt;%
+    group_by(simulated, cat, var) %&gt;%
+    summarise(
+      mean = mean(value),
+      pct_975 = quantile(value, 0.975),
+      pct_025 = quantile(value, 0.025)
+    )
+
+true_turnout &lt;- df_eod %&gt;%
+  filter(office == office_suffix(turnout_office)) %&gt;%
+  group_by(warddiv) %&gt;%
+  summarise(turnout = sum(votes)) %&gt;%
+  left_join(turnout_sim %&gt;% filter(sim==1) %&gt;% select(warddiv, simulated)) %&gt;%
+  left_join(div_cats %&gt;% select(warddiv, cat)) %&gt;%
+  group_by(simulated, cat) %&gt;%
+  summarise(turnout = sum(turnout))
+
+
+ggplot(
+  cat_sim %&gt;% mutate(key = ifelse(var==&quot;turnout&quot;, &quot;Turnout&quot;, &quot;N(Divisions)&quot;)), 
+  aes(x=cat, y=mean)
+) + 
+  geom_bar(stat=&quot;identity&quot;, aes(fill=cat)) +
+  geom_errorbar(aes(ymin = pct_025, ymax=pct_975), width = 0.5) +
+  facet_grid(key ~ simulated, scales=&quot;free_y&quot;) +
+  geom_point(
+    data = true_turnout %&gt;% mutate(key=&quot;Turnout&quot;) %&gt;% rename(mean=turnout)
+  ) +
+  theme_sixtysix() %+replace% theme(axis.text.x = element_blank()) +
+  scale_y_continuous(labels=scales::comma) +
+  scale_fill_manual(values=cat_colors) +
+  labs(
+    x=NULL,
+    y=NULL,
+    title=sprintf(&quot;Needle Results as of %s pm&quot;, pretty_time),
+    subtitle=sim_subtitle,
+    fill=NULL
+  )</code></pre>
+</details>
+<p><img src="https://sixtysixwards.com/wp-content/uploads/2019/11/needle_cats-1.png" width="2100" style="display: block; margin: auto;" /></p>
+<p>This is where things went very wrong. Notice that the Needle was super confident about how many votes would come from the left-over divisions, and under-predicted by a lot, 112K instead of 85K in Black Voter divisions (+32%), and 63K instead of 45K in White Moderate divisions (+40%).</p>
+<p>The evidence for what went wrong is actually in the Reporting Division plots; the eventual, true turnout was higher than what was reported at the time! I did all of the calculations assuming those numbers were final. Instead, what must have happened is some of those results only represented a fraction of the machines for the division. This was explicitly called out in the data from the old machines; I’ll need to figure out how to get that data from the new machines.</p>
+<p>Luckily, that didn’t hurt the needle too badly. What would have been <em>bad</em> is if the turnout imbalance occured disproportionately by bloc. But it occurred about as much in the Black Voter divisions as the White Moderate divisions (minus 8%), so didn’t ruin the predictions.</p>
+<p>[Something went wrong in the spreadsheet at 10:20 and O’Rourke shot to 36%. I haven’t been able to reproduce that, and think it may have to do with the fact that the results in already-reporting divisions changed, which I assumed couldn’t happen. I’m going to overhaul that logic to robustify it.]</p>
+</div>
+</div>
+<div id="what-ill-do-differently" class="section level1">
+<h1>What I’ll do differently</h1>
+<p>So it looks like the needle was basically right. But I still didn’t trust it. What will it take to finally learn my lesson?</p>
+<p>The answer, as always, is model transparency. The problem with the results was that I saw a bunch of 100’s and no intuition for why the Needle had converged so fast. Suppose, instead, I had produced all of the plots above in real time. I would have been convinced!</p>
+<p>So that’s what I’ll do. The next iteration of the Needle will provide live updates of all the plots above: the results by voting bloc separately for the reporting and simulated divisions. Maybe then I’ll finally embrace the Needle’s extreme confidence.</p>
+<p>See you in April!</p>
+<details><summary><code><span style="color: grey;">View code</span></code></summary>
+<pre class="r"><code># votes_per_voter &lt;- df_eod %&gt;%
+#   filter(office %in% c(&quot;COUNCIL AT LARGE&quot;, &quot;MAYOR&quot;)) %&gt;%
+#   group_by(warddiv, office) %&gt;%
+#   summarise(total_votes = sum(votes)) %&gt;%
+#   left_join(div_cats %&gt;% select(warddiv, cat)) %&gt;%
+#   # left_join(turnout_sim %&gt;% filter(sim==1) %&gt;% select(warddiv, simulated)) %&gt;%
+#   # group_by(cat, simulated, office) %&gt;%
+#   group_by(cat, office) %&gt;%
+#   summarise(total_votes = sum(total_votes)) %&gt;%
+#   spread(key=office, value=total_votes) %&gt;%
+#   mutate(at_large_per_mayor = `COUNCIL AT LARGE` / MAYOR)
+# 
+# ggplot(
+#   votes_per_voter,
+#   aes(x = cat, y = at_large_per_mayor)
+# ) +
+#   geom_bar(stat=&quot;identity&quot;, aes(fill=cat)) +
+#   geom_text(
+#     y = 0.4, 
+#     aes(label=sprintf(&quot;%0.2f&quot;, at_large_per_mayor)),
+#     size=7,
+#     color=&quot;white&quot;
+#   ) +
+#   theme_sixtysix() %+replace% 
+#   theme(axis.text.x = element_text(angle=45, vjust = 0.8, hjust=0.8)) +
+#   scale_y_continuous(labels=scales::comma) +
+#   scale_fill_manual(values=cat_colors, guide=FALSE) +
+#   labs(
+#     x=NULL,
+#     y=NULL,
+#     title=&quot;Voters typically vote for 4.5 candidates&quot;,
+#     subtitle=&quot;At Large Votes divided by Votes for Mayor (voters could have selected 5)&quot;,
+#     fill=NULL
+#   )
+# </code></pre>
+</details>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
