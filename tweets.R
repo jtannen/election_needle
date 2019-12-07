@@ -1,7 +1,6 @@
 library(rtweet)
 library(lubridate)
 
-appname <- "SixtySixWards Tweeter"
 source("generate_twitter_token.R")
 
 setClass(
