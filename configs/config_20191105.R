@@ -5,5 +5,6 @@ CONFIG <- list(
     "DISTRICT COUNCIL-10TH DISTRICT",
     "MAYOR"
   ),
-  use_log=TRUE
+  use_log=TRUE,
+  div_path="C:/Users/Jonathan Tannen/Dropbox/sixty_six/data/gis/warddivs/201911/Political_Divisions.shp"
 )

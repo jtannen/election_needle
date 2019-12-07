@@ -17,21 +17,21 @@ test_offices <- tribble(
   2019, "primary", "DISTRICT COUNCIL: 7", 1
 ) %>% mutate(election = ifelse(election == "primary", "primary-DEM", election))
 
-NEEDLE_DIR <- "C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/"
-olddir <- setwd(NEEDLE_DIR)
-
 SAMPLE_FRAC <- 0.05
 
 METHOD <- "svd"
 
-source("prep_data.R")
-source("needle.R")
+source("../prep_data.R", chdir=TRUE)
+source("../needle.R", chdir=TRUE)
+
+print("DONE SOURCING")
 
 primary_needle_params <- calc_params(
   method=METHOD,
   is_primary=TRUE,
   use_log=TRUE,
-  show_diagnostics=FALSE
+  show_diagnostics=FALSE,
+  df_past_path = most_recent_file("../../../data/processed_data/df_major_", ext = "Rds")
 )
 
 general_needle_params <- calc_params(
@@ -41,7 +41,7 @@ general_needle_params <- calc_params(
   show_diagnostics=FALSE
 )
 
-df_major <- readRDS("../../data/processed_data/df_major_2019-11-07.Rds")
+df_major <- readRDS("../../../data/processed_data/df_major_2019-11-07.Rds")
 df_major %<>%
   filter(candidate != "Write In") %>%
   mutate(

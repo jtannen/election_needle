@@ -2,7 +2,7 @@ library(tidyverse)
 library(MASS)
 library(sf)
 
-setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
+# setwd("C:/Users/Jonathan Tannen/Dropbox/sixty_six/posts/election_night_needle/")
 select <- dplyr::select
 
 source("needle_util.R")
@@ -12,26 +12,25 @@ SVD_METHOD = "svd"
 # SVD_METHOD = "shrinkage"
 
 ELECTION <- "20191105"
-div_path <- "../../data/gis/201911/Political_Divisions.shp"
+
 CONFIG <- get_config(ELECTION)
+DIV_PATH <- CONFIG$div_path
 USE_LOG <- CONFIG$use_log
 
 calc_params <- function(
   method=SVD_METHOD,
   is_primary=CONFIG$is_primary,
   use_log=USE_LOG,
-  show_diagnostics=TRUE
+  show_diagnostics=TRUE,
+  df_past_path=most_recent_file("../../data/processed_data/df_major_")
 ){
-  
-  df_past <- readRDS(
-    most_recent_file("../../data/processed_data/df_major_")
-  ) %>%
+  df_past <- readRDS(df_past_path) %>%
     unite("election", year, election) %>%
     mutate(warddiv = pretty_div(warddiv)) %>%
     filter(candidate != "Write In")
   
   
-  divs <- st_read(div_path) %>%
+  divs <- st_read(DIV_PATH) %>%
     mutate(
       warddiv = pretty_div(DIVISION_N)
     )

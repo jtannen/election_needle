@@ -58,7 +58,8 @@ download_election_results <- function(verbose=TRUE) {
     return(NULL)
   }
   
-  download.file(link, get_destination_file())
+  destfile <- get_destination_file() 
+  download.file(link, destfile)
   
   if(verbose) print(sprintf("%s downloaded.", destfile))
   return(destfile)

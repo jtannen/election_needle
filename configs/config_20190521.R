@@ -8,5 +8,6 @@ CONFIG <- list(
     "DISTRICT COUNCIL-7TH DISTRICT-DEM",
     "MAYOR-DEM"
   ),
-  use_log=TRUE
+  use_log=TRUE,
+  div_path="C:/Users/Jonathan Tannen/Dropbox/sixty_six/data/gis/warddivs/2019/Political_Divisions.shp"
 )

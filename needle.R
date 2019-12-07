@@ -79,7 +79,9 @@ if(FALSE){
 
 pretty_div <- function(warddiv) sprintf("%s-%s", substr(warddiv, 1, 2), substr(warddiv, 3, 4))
 
-divs <- st_read("../../data/gis/201911/Political_Divisions.shp")
+print(getwd())
+print(list.files("../.."))
+divs <- st_read("../../data/gis/warddivs/201911/Political_Divisions.shp")
 divs <- st_transform(divs, 2272) %>%
   rename(
     warddiv = DIVISION_N
@@ -87,7 +89,7 @@ divs <- st_transform(divs, 2272) %>%
   arrange(warddiv) %>%
   mutate(warddiv=pretty_div(warddiv))
 
-wards <- st_read("../../data/gis/2019/Political_Wards.shp") %>%
+wards <- st_read("../../data/gis/warddivs/2019/Political_Wards.shp") %>%
   mutate(ward=sprintf("%02d", asnum(WARD_NUM))) %>%
   st_transform(2272)
 
