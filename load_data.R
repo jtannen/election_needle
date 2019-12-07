@@ -45,6 +45,9 @@ read_download <- function(file){
 ##################
 ## Download/Load
 ##################
+get_destination_file <- function(){
+  sprintf("raw_data/results_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
+}
 
 download_election_results <- function(verbose=TRUE) {
   link_list <- get_download_link()
@@ -55,8 +58,7 @@ download_election_results <- function(verbose=TRUE) {
     return(NULL)
   }
   
-  destfile <- sprintf("raw_data/results_%s.csv", format(Sys.time(), "%Y%m%d_%H%M%S"))
-  download.file(link, destfile)
+  download.file(link, get_destination_file())
   
   if(verbose) print(sprintf("%s downloaded.", destfile))
   return(destfile)

@@ -9,5 +9,5 @@ test_files <- list.files(
 )
 
 for(file in test_files){
-  source(file)
+  source(file, chdir=TRUE)
 }
